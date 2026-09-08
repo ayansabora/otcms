@@ -22,7 +22,7 @@ datasource db {
 // ─────────────────────────────────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(uuid())
+  id           String   @id @default(uuid(7))
   email        String   @unique @db.VarChar(255)
   passwordHash String   @map("password_hash") @db.VarChar(255)
   fullName     String   @map("full_name") @db.VarChar(255)
@@ -43,6 +43,7 @@ model User {
   notifications      Notification[]
   auditLogs          AuditLog[]
   hearingParticipant HearingParticipant[]
+  refreshTokens      RefreshToken[]
 
   @@map("users")
 }
@@ -53,8 +54,44 @@ enum UserStatus {
   SUSPENDED
 }
 
+// Refresh tokens are stored hashed, never in plaintext, so a leaked database
+// dump cannot be used to mint sessions. Enables rotation + reuse detection:
+// if a token is presented after it's already been rotated away, we revoke
+// the whole family (possible token theft).
+model RefreshToken {
+  id               String    @id @default(uuid(7))
+  userId           String    @map("user_id")
+  tokenHash        String    @unique @map("token_hash") @db.VarChar(255)
+  familyId         String    @map("family_id") // shared by a token's rotation chain
+  expiresAt        DateTime  @map("expires_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  revokedAt        DateTime? @map("revoked_at")
+  replacedById     String?   @map("replaced_by_id")
+  ipAddress        String?   @map("ip_address") @db.VarChar(64)
+  userAgent        String?   @map("user_agent") @db.VarChar(255)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+// Password reset tokens: single-use, short-lived, stored hashed.
+model PasswordResetToken {
+  id         String    @id @default(uuid(7))
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt  DateTime  @map("expires_at")
+  usedAt     DateTime? @map("used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
 model Role {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid(7))
   name        String   @unique @db.VarChar(64) // e.g. ADMIN, COURT_MANAGER, ELDER, RECORD_OFFICER
   description String?  @db.VarChar(255)
   createdAt   DateTime @default(now()) @map("created_at")
@@ -66,7 +103,7 @@ model Role {
 }
 
 model Permission {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid(7))
   code        String   @unique @db.VarChar(128) // e.g. "case:create", "decision:approve"
   description String?  @db.VarChar(255)
 
@@ -102,7 +139,7 @@ model RolePermission {
 // ─────────────────────────────────────────────────────────────────────────
 
 model CommunityMember {
-  id                 String                     @id @default(uuid())
+  id                 String                     @id @default(uuid(7))
   userId             String?                    @unique @map("user_id") // nullable: a member may not have login access
   fullName           String                     @map("full_name") @db.VarChar(255)
   gender             String?                    @db.VarChar(32)
@@ -137,7 +174,7 @@ enum MemberVerificationStatus {
 // ─────────────────────────────────────────────────────────────────────────
 
 model Case {
-  id           String     @id @default(uuid())
+  id           String     @id @default(uuid(7))
   caseNumber   String     @unique @map("case_number") @db.VarChar(64) // default format OTCMS-{year}-{seq}; see blueprint §26
   caseType     CaseType   @map("case_type")
   status       CaseStatus @default(SUBMITTED)
@@ -200,7 +237,7 @@ enum CasePriority {
 }
 
 model CaseParty {
-  id                String   @id @default(uuid())
+  id                String   @id @default(uuid(7))
   caseId            String   @map("case_id")
   communityMemberId String   @map("community_member_id")
   roleInCase        CasePartyRole @map("role_in_case")
@@ -219,7 +256,7 @@ enum CasePartyRole {
 }
 
 model Witness {
-  id                String   @id @default(uuid())
+  id                String   @id @default(uuid(7))
   fullName          String   @map("full_name") @db.VarChar(255)
   phone             String?  @db.VarChar(32)
   communityMemberId String?  @map("community_member_id") // optional link if witness is also a registered member
@@ -231,7 +268,7 @@ model Witness {
 }
 
 model CaseWitness {
-  id                String   @id @default(uuid())
+  id                String   @id @default(uuid(7))
   caseId            String   @map("case_id")
   witnessId         String   @map("witness_id")
   testimonySummary  String?  @map("testimony_summary") @db.Text
@@ -248,7 +285,7 @@ model CaseWitness {
 
 // Elder panel assignment (see blueprint §11 consensus model — default pending confirmation)
 model CaseAssignment {
-  id         String   @id @default(uuid())
+  id         String   @id @default(uuid(7))
   caseId     String   @map("case_id")
   userId     String   @map("user_id") // an elder / court manager / record officer
   roleInPanel PanelRole @default(MEMBER) @map("role_in_panel")
@@ -268,7 +305,7 @@ enum PanelRole {
 }
 
 model CaseHistory {
-  id         String   @id @default(uuid())
+  id         String   @id @default(uuid(7))
   caseId     String   @map("case_id")
   fromStatus CaseStatus? @map("from_status")
   toStatus   CaseStatus  @map("to_status")
@@ -287,7 +324,7 @@ model CaseHistory {
 // ─────────────────────────────────────────────────────────────────────────
 
 model Hearing {
-  id            String        @id @default(uuid())
+  id            String        @id @default(uuid(7))
   caseId        String        @map("case_id")
   scheduledDate DateTime      @map("scheduled_date") @db.Date
   startTime     DateTime      @map("start_time")
@@ -316,7 +353,7 @@ enum HearingStatus {
 }
 
 model HearingParticipant {
-  id                String   @id @default(uuid())
+  id                String   @id @default(uuid(7))
   hearingId         String   @map("hearing_id")
   userId            String?  @map("user_id") // elder / officer
   communityMemberId String?  @map("community_member_id") // party
@@ -335,7 +372,7 @@ model HearingParticipant {
 // ─────────────────────────────────────────────────────────────────────────
 
 model Decision {
-  id             String          @id @default(uuid())
+  id             String          @id @default(uuid(7))
   caseId         String          @map("case_id")
   decisionDate   DateTime?       @map("decision_date")
   outcome        String          @db.VarChar(255)
@@ -362,7 +399,7 @@ enum DecisionApprovalStatus {
 }
 
 model DecisionApproval {
-  id         String   @id @default(uuid())
+  id         String   @id @default(uuid(7))
   decisionId String   @map("decision_id")
   userId     String   @map("user_id") // panel elder approving
   approved   Boolean
@@ -381,7 +418,7 @@ model DecisionApproval {
 // ─────────────────────────────────────────────────────────────────────────
 
 model Document {
-  id           String   @id @default(uuid())
+  id           String   @id @default(uuid(7))
   caseId       String?  @map("case_id")
   decisionId   String?  @map("decision_id")
   filename     String   @db.VarChar(255)
@@ -406,7 +443,7 @@ model Document {
 // ─────────────────────────────────────────────────────────────────────────
 
 model Notification {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid(7))
   userId    String   @map("user_id")
   type      String   @db.VarChar(64)
   title     String   @db.VarChar(255)
@@ -426,7 +463,7 @@ model Notification {
 // ─────────────────────────────────────────────────────────────────────────
 
 model AuditLog {
-  id         String   @id @default(uuid())
+  id         String   @id @default(uuid(7))
   actorUserId String? @map("actor_user_id")
   action     String   @db.VarChar(128) // e.g. "case.status_changed"
   entityType String   @map("entity_type") @db.VarChar(64)

@@ -11,6 +11,16 @@ import { requestIdMiddleware } from "./middleware/requestId.js";
 import { generalRateLimiter } from "./middleware/rateLimiter.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { healthRouter } from "./modules/health/health.routes.js";
+import { authRouter } from "./modules/auth/auth.routes.js";
+import { usersRouter, rolesRouter } from "./modules/users/users.routes.js";
+import { communityMembersRouter } from "./modules/community-members/community-members.routes.js";
+import { casesRouter } from "./modules/cases/cases.routes.js";
+import { hearingsRouter } from "./modules/hearings/hearings.routes.js";
+import { decisionsRouter } from "./modules/decisions/decisions.routes.js";
+import { documentsRouter } from "./modules/documents/documents.routes.js";
+import { notificationsRouter } from "./modules/notifications/notifications.routes.js";
+import { reportsRouter } from "./modules/reports/reports.routes.js";
+import { auditRouter } from "./modules/audit/audit.routes.js";
 
 export function createApp(): Express {
   const app = express();
@@ -48,8 +58,17 @@ export function createApp(): Express {
   // Health checks are unauthenticated by design (deployment infra needs them).
   app.use("/api/v1/health", healthRouter);
 
-  // Domain routers (auth, users, cases, ...) are mounted here in later phases,
-  // e.g. app.use("/api/v1/auth", authRouter);
+  app.use("/api/v1/auth", authRouter);
+  app.use("/api/v1/users", usersRouter);
+  app.use("/api/v1/roles", rolesRouter);
+  app.use("/api/v1/community-members", communityMembersRouter);
+  app.use("/api/v1/cases", casesRouter);
+  app.use("/api/v1/hearings", hearingsRouter);
+  app.use("/api/v1/decisions", decisionsRouter);
+  app.use("/api/v1/documents", documentsRouter);
+  app.use("/api/v1/notifications", notificationsRouter);
+  app.use("/api/v1/reports", reportsRouter);
+  app.use("/api/v1/audit-logs", auditRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

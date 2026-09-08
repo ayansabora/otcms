@@ -1,75 +1,69 @@
-# React + TypeScript + Vite
+# OTCMS — Oromoo Traditional Court Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A case-management system for Oromo traditional court activities in Bale Robe City, Ethiopia,
+built to support (not replace) Gadaa-based traditional justice processes: elder-panel
+decision-making, witness testimony, community verification, and confidential case handling.
 
-Currently, two official plugins are available:
+**Status:** Phase 1 (project setup) in progress. See `docs/architecture.md` for the full
+system blueprint, open business-rule decisions, and phase plan.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Structure
 
 ```
-
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+otcms/
+  frontend/   React + TypeScript + Vite + Tailwind SPA
+  backend/    Node + TypeScript + Express + Prisma API
+  docker/     Dockerfiles + Nginx config
+  docs/       Architecture, database, API, security, deployment docs
 ```
+
+## Tech stack (verified current, September 2026)
+
+| Layer | Choice | Version |
+|---|---|---|
+| Frontend | React + TypeScript + Vite + Tailwind CSS | 19.2 / 6.0 / 8.0 / 4.3 |
+| Backend | Node.js + Express | 24 LTS / 5.2 |
+| Database | MySQL | 9.7 LTS |
+| ORM | Prisma | 7 |
+
+Full rationale for each choice is in `docs/architecture.md`.
+
+## Local development
+
+### Prerequisites
+- Node.js 24+
+- MySQL 9.7 (or run via Docker Compose — see below)
+
+### Backend
+```bash
+cd backend
+cp .env.example .env      # then fill in real secrets — never commit .env
+npm install
+npm run prisma:migrate:dev
+npm run dev                # http://localhost:4000
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev                # http://localhost:5173
+```
+
+### Everything via Docker Compose
+```bash
+docker compose up --build
+```
+
+## Open decisions blocking full business-logic implementation
+
+Several legally/culturally sensitive rules (elder-panel consensus thresholds, member
+verification requirements, marriage/divorce witness rules, and whether "Court Manager"
+and "Elder/Jaarsaa Biyyaa" are one role or two) are implemented with **configurable
+defaults**, not final hard-coded behavior. See `docs/architecture.md` §11/§27 for the
+full list — these need sign-off before Phase 6 (Case Management business logic) is
+considered final.
+
+## License
+
+Proprietary — internal project for Bale Robe City court administration.
