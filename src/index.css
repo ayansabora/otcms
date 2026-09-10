@@ -1,1 +1,53 @@
 @import "tailwindcss";
+
+@theme {
+  /* Color — deep forest green + restrained gold accent, cool paper
+     background. Deliberately not the cream/terracotta or near-black/neon
+     combinations that read as generic AI-generated defaults. */
+  --color-paper: #f5f6f4;
+  --color-paper-raised: #ffffff;
+  --color-ink: #14181a;
+  --color-muted: #5b655d;
+  --color-line: #dee1dc;
+  --color-forest: #16342a;
+  --color-forest-light: #1f4636;
+  --color-forest-dark: #0e241d;
+  --color-gold: #b8862b;
+  --color-gold-light: #f4e9d3;
+
+  --color-status-pending: #b8862b;
+  --color-status-active: #2b6cb0;
+  --color-status-success: #1f7a4d;
+  --color-status-danger: #b23a2e;
+  --color-status-neutral: #5b655d;
+
+  --font-display: "Source Serif 4", Georgia, serif;
+  --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Visible keyboard focus everywhere — accessibility floor, not decoration. */
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
