@@ -22,8 +22,7 @@ export const logger = pino({
     ],
     censor: "[REDACTED]",
   },
-  transport:
-    env.NODE_ENV === "development"
-      ? { target: "pino-pretty", options: { colorize: true } }
-      : undefined,
+  ...(env.NODE_ENV === "development"
+    ? { transport: { target: "pino-pretty", options: { colorize: true } } }
+    : {}),
 });
