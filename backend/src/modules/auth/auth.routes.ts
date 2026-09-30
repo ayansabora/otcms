@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authController } from "./auth.controller.js";
 import { authRateLimiter } from "../../middleware/rateLimiter.js";
 import { authenticate } from "../../middleware/authenticate.js";
+import { requireCsrfHeader } from "../../middleware/csrf.js";
 
 export const authRouter = Router();
 
@@ -10,8 +11,8 @@ export const authRouter = Router();
 authRouter.use(authRateLimiter);
 
 authRouter.post("/login", authController.login);
-authRouter.post("/refresh", authController.refresh);
-authRouter.post("/logout", authController.logout);
+authRouter.post("/refresh", requireCsrfHeader, authController.refresh);
+authRouter.post("/logout", requireCsrfHeader, authController.logout);
 authRouter.post("/password-reset/request", authController.requestPasswordReset);
 authRouter.post("/password-reset/confirm", authController.resetPassword);
 

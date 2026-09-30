@@ -24,7 +24,11 @@ export class ApiError extends Error {
 }
 
 async function refreshAccessToken(): Promise<string | null> {
-  const res = await fetch(`${API_BASE}/auth/refresh`, { method: "POST", credentials: "include" });
+  const res = await fetch(`${API_BASE}/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "x-otcms-csrf": "1" },
+  });
   if (!res.ok) return null;
   const data = (await res.json()) as { accessToken: string };
   accessToken = data.accessToken;
@@ -51,6 +55,13 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
 async function rawRequest<T>(path: string, options: RequestOptions, retrying = false): Promise<T> {
   const headers: Record<string, string> = {};
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  // The two cookie-authenticated endpoints require this header as a CSRF
+  // defense-in-depth measure (see backend/src/middleware/csrf.ts) — a
+  // cross-site form submission cannot set custom headers, so this is safe
+  // for our own same-origin fetch calls to set unconditionally.
+  if (path === "/auth/refresh" || path === "/auth/logout") {
+    headers["x-otcms-csrf"] = "1";
+  }
 
   let body: BodyInit | undefined;
   if (options.body !== undefined) {

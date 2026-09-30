@@ -3,7 +3,8 @@ import { documentsRepository } from "./documents.repository.js";
 import { casesRepository } from "../cases/cases.repository.js";
 import { casesService } from "../cases/cases.service.js";
 import { storageAdapter } from "./storage/index.js";
-import { NotFoundError, ForbiddenError } from "../../utils/appError.js";
+import { matchesDeclaredType } from "../../utils/fileSignature.js";
+import { NotFoundError, ValidationError, ForbiddenError } from "../../utils/appError.js";
 import { recordAudit } from "../audit/audit.service.js";
 import { prisma } from "../../database/prismaClient.js";
 
@@ -34,6 +35,14 @@ export const documentsService = {
       // attaching evidence to (view scope also covers assigned elders and
       // court personnel who hold broader view permissions).
       await casesService.assertCanView(caseRecord, caller);
+    }
+
+    // Defense-in-depth: multer's fileFilter already checked the client's
+    // claimed Content-Type against the allow-list; this re-verifies the
+    // actual bytes match that claim, so a renamed executable can't sneak
+    // through by lying about its MIME type.
+    if (!matchesDeclaredType(file.buffer, file.mimetype)) {
+      throw new ValidationError("File content does not match its declared type");
     }
 
     // Storage key deliberately has no relation to the original filename —

@@ -1,77 +1,96 @@
-import express, { type Express } from "express";
-import helmet from "helmet";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import compression from "compression";
-import pinoHttp from "pino-http";
+import { prisma } from "../prismaClient.js";
 
-import { env } from "./config/env.js";
-import { logger } from "./config/logger.js";
-import { requestIdMiddleware } from "./middleware/requestId.js";
-import { generalRateLimiter } from "./middleware/rateLimiter.js";
-import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
-import { healthRouter } from "./modules/health/health.routes.js";
-import { authRouter } from "./modules/auth/auth.routes.js";
-import { usersRouter, rolesRouter } from "./modules/users/users.routes.js";
-import { communityMembersRouter } from "./modules/community-members/community-members.routes.js";
-import { casesRouter } from "./modules/cases/cases.routes.js";
-import { hearingsRouter } from "./modules/hearings/hearings.routes.js";
-import { decisionsRouter } from "./modules/decisions/decisions.routes.js";
-import { documentsRouter } from "./modules/documents/documents.routes.js";
-import { notificationsRouter } from "./modules/notifications/notifications.routes.js";
-import { reportsRouter } from "./modules/reports/reports.routes.js";
-import { auditRouter } from "./modules/audit/audit.routes.js";
+/**
+ * Permission codes and the draft role/permission matrix (docs/architecture.md
+ * §6). Extracted here so the seed script and integration test setup share
+ * one source of truth instead of drifting apart.
+ */
+export const PERMISSIONS = [
+  { code: "user:manage", description: "Create, update, activate/deactivate users" },
+  { code: "role:manage", description: "Manage roles and permissions" },
+  { code: "audit:read", description: "View audit logs" },
+  { code: "member:register", description: "Register a community member" },
+  { code: "member:verify", description: "Verify a community member" },
+  { code: "member:view", description: "View community member records" },
+  { code: "case:create", description: "Register a new case" },
+  { code: "case:view_all", description: "View all cases" },
+  { code: "case:view_assigned", description: "View cases assigned to self" },
+  { code: "case:view_own", description: "View own submitted cases" },
+  { code: "case:update", description: "Update case details" },
+  { code: "case:assign", description: "Assign/reassign a case to elders" },
+  { code: "case:transition", description: "Move a case through workflow states" },
+  { code: "hearing:manage", description: "Schedule and manage hearings" },
+  { code: "decision:record", description: "Record a decision" },
+  { code: "decision:approve", description: "Approve/finalize a decision (panel elder)" },
+  { code: "document:upload", description: "Upload a document" },
+  { code: "document:read", description: "Download/view an authorized document" },
+  { code: "report:generate", description: "Generate reports" },
+] as const;
 
-export function createApp(): Express {
-  const app = express();
+export const ROLE_PERMISSIONS: Record<string, string[]> = {
+  ADMIN: [
+    "user:manage",
+    "role:manage",
+    "audit:read",
+    "member:register",
+    "member:view",
+    "case:view_all",
+    "case:assign",
+    "document:upload",
+    "document:read",
+    "report:generate",
+  ],
+  COURT_MANAGER: [
+    "member:verify",
+    "member:view",
+    "case:view_assigned",
+    "case:transition",
+    "hearing:manage",
+    "decision:record",
+    "decision:approve",
+    "document:upload",
+    "document:read",
+    "report:generate",
+  ],
+  RECORD_OFFICER: [
+    "member:register",
+    "member:view",
+    "case:create",
+    "case:view_all",
+    "case:update",
+    "case:transition",
+    "case:assign",
+    "hearing:manage",
+    "document:upload",
+    "document:read",
+    "report:generate",
+  ],
+  COMMUNITY_MEMBER: ["case:view_own", "document:read"],
+};
 
-  // Trust the reverse proxy (Nginx) for correct client IPs / rate limiting.
-  app.set("trust proxy", 1);
+export async function seedRolesAndPermissions(): Promise<void> {
+  await prisma.permission.createMany({
+    data: PERMISSIONS.map((p) => ({ code: p.code, description: p.description })),
+    skipDuplicates: true,
+  });
 
-  app.use(requestIdMiddleware);
-  app.use(
-    pinoHttp({
-      logger,
-      customProps: (req) => ({ requestId: (req as { requestId?: string }).requestId }),
-    }),
-  );
+  for (const roleName of Object.keys(ROLE_PERMISSIONS)) {
+    await prisma.role.upsert({ where: { name: roleName }, update: {}, create: { name: roleName } });
+  }
 
-  app.use(
-    helmet({
-      contentSecurityPolicy: env.NODE_ENV === "production" ? undefined : false,
-    }),
-  );
+  const allPermissions = await prisma.permission.findMany();
+  const permissionByCode = new Map(allPermissions.map((p) => [p.code, p.id]));
 
-  app.use(
-    cors({
-      origin: env.CORS_ORIGIN.split(",").map((o) => o.trim()),
-      credentials: true,
-    }),
-  );
-
-  app.use(compression());
-  app.use(express.json({ limit: "1mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "1mb" }));
-  app.use(cookieParser());
-  app.use(generalRateLimiter);
-
-  // Health checks are unauthenticated by design (deployment infra needs them).
-  app.use("/api/v1/health", healthRouter);
-
-  app.use("/api/v1/auth", authRouter);
-  app.use("/api/v1/users", usersRouter);
-  app.use("/api/v1/roles", rolesRouter);
-  app.use("/api/v1/community-members", communityMembersRouter);
-  app.use("/api/v1/cases", casesRouter);
-  app.use("/api/v1/hearings", hearingsRouter);
-  app.use("/api/v1/decisions", decisionsRouter);
-  app.use("/api/v1/documents", documentsRouter);
-  app.use("/api/v1/notifications", notificationsRouter);
-  app.use("/api/v1/reports", reportsRouter);
-  app.use("/api/v1/audit-logs", auditRouter);
-
-  app.use(notFoundHandler);
-  app.use(errorHandler);
-
-  return app;
+  for (const [roleName, codes] of Object.entries(ROLE_PERMISSIONS)) {
+    const role = await prisma.role.findUniqueOrThrow({ where: { name: roleName } });
+    for (const code of codes) {
+      const permissionId = permissionByCode.get(code);
+      if (!permissionId) continue;
+      await prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: role.id, permissionId } },
+        update: {},
+        create: { roleId: role.id, permissionId },
+      });
+    }
+  }
 }
