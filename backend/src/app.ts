@@ -1,10 +1,6 @@
 import { prisma } from "../prismaClient.js";
 
-/**
- * Permission codes and the draft role/permission matrix (docs/architecture.md
- * §6). Extracted here so the seed script and integration test setup share
- * one source of truth instead of drifting apart.
- */
+
 export const PERMISSIONS = [
   { code: "user:manage", description: "Create, update, activate/deactivate users" },
   { code: "role:manage", description: "Manage roles and permissions" },

@@ -1,4 +1,5 @@
 import type { Express } from "express";
+// @ts-expect-error supertest is installed at runtime but its type declarations are unavailable.
 import request from "supertest";
 
 export async function loginAs(app: Express, email: string, password: string): Promise<string> {
