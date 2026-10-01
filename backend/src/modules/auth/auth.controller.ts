@@ -3,6 +3,7 @@ import { authService } from "./auth.service.js";
 import { loginSchema, requestPasswordResetSchema, resetPasswordSchema, changePasswordSchema } from "./auth.validators.js";
 import { env } from "../../config/env.js";
 import { UnauthorizedError } from "../../utils/appError.js";
+import { authRepository } from "./auth.repository.js";
 
 const REFRESH_COOKIE_NAME = "otcms_refresh_token";
 const REFRESH_COOKIE_PATH = "/api/v1/auth"; // scoped narrowly, not sent on every request
@@ -75,6 +76,15 @@ export const authController = {
 
   async me(req: Request, res: Response) {
     if (!req.user) throw new UnauthorizedError();
-    res.status(200).json({ user: req.user });
+    // Return full user profile from DB so the frontend has email, fullName etc.
+    const user = await authRepository.findUserById(req.user.sub);
+    if (!user) throw new UnauthorizedError();
+    const roles = user.roles.map((ur) => ur.role.name);
+    const permissions = Array.from(
+      new Set(user.roles.flatMap((ur) => ur.role.permissions.map((rp) => rp.permission.code))),
+    );
+    res.status(200).json({
+      user: { id: user.id, email: user.email, fullName: user.fullName, roles, permissions },
+    });
   },
 };

@@ -23,15 +23,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // cookie (if any) before rendering protected routes.
     (async () => {
       try {
-        const res = await fetch("/api/v1/auth/refresh", { method: "POST", credentials: "include" });
+        const res = await fetch("/api/v1/auth/refresh", {
+          method: "POST",
+          credentials: "include",
+          headers: { "x-otcms-csrf": "1" },
+        });
         if (res.ok) {
           const data = (await res.json()) as { accessToken: string };
           setAccessToken(data.accessToken);
-          const me = await api.get<{ user: { sub: string; roles: string[]; permissions: string[] } }>("/auth/me");
-          setUser({ id: me.user.sub, email: "", fullName: "", roles: me.user.roles, permissions: me.user.permissions });
+          // Fetch full profile including email and fullName from the fixed /me endpoint.
+          const me = await api.get<{ user: AuthUser }>("/auth/me");
+          setUser(me.user);
         }
       } catch {
-        // No valid session — that's fine, user will see the login page.
+        // No valid session — user will see the login page.
       } finally {
         setIsLoading(false);
       }
