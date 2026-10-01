@@ -11,6 +11,7 @@ import { requestIdMiddleware } from "./middleware/requestId.js";
 import { generalRateLimiter } from "./middleware/rateLimiter.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { healthRouter } from "./modules/health/health.routes.js";
+import { authRouter } from "./modules/auth/auth.routes.js";
 
 export function createApp(): Express {
   const app = express();
@@ -47,9 +48,7 @@ export function createApp(): Express {
 
   // Health checks are unauthenticated by design (deployment infra needs them).
   app.use("/api/v1/health", healthRouter);
-
-  // Domain routers (auth, users, cases, ...) are mounted here in later phases,
-  // e.g. app.use("/api/v1/auth", authRouter).
+  app.use("/api/v1/auth", authRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
