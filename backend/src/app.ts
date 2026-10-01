@@ -1,4 +1,4 @@
-import { prisma } from "../prismaClient.js";
+import { prisma } from "./database/prismaClient.js";
 
 
 export const PERMISSIONS = [
@@ -75,7 +75,7 @@ export async function seedRolesAndPermissions(): Promise<void> {
   }
 
   const allPermissions = await prisma.permission.findMany();
-  const permissionByCode = new Map(allPermissions.map((p) => [p.code, p.id]));
+  const permissionByCode = new Map(allPermissions.map((p: (typeof allPermissions)[number]) => [p.code, p.id]));
 
   for (const [roleName, codes] of Object.entries(ROLE_PERMISSIONS)) {
     const role = await prisma.role.findUniqueOrThrow({ where: { name: roleName } });

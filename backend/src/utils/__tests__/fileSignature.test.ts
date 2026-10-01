@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { matchesDeclaredType } from "../fileSignature.js";
+import { matchesDeclaredType } from "../fileSignature";
 
 describe("matchesDeclaredType", () => {
   it("accepts a real PDF signature", () => {
