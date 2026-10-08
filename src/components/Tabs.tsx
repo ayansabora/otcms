@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 export interface TabItem {
   id: string;
   label: string;
+  icon?: ReactNode;
   count?: number;
 }
 
@@ -10,11 +11,12 @@ interface TabsProps {
   tabs: TabItem[];
   active: string;
   onChange: (id: string) => void;
+  className?: string;
 }
 
-export function Tabs({ tabs, active, onChange }: TabsProps) {
+export function Tabs({ tabs, active, onChange, className = "" }: TabsProps) {
   return (
-    <div className="flex gap-0 border-b border-[var(--color-line)] mb-6 overflow-x-auto">
+    <div className={`flex gap-0 border-b border-[var(--color-line)] overflow-x-auto ${className}`}>
       {tabs.map((tab) => {
         const isActive = tab.id === active;
         return (
@@ -22,22 +24,23 @@ export function Tabs({ tabs, active, onChange }: TabsProps) {
             key={tab.id}
             onClick={() => onChange(tab.id)}
             className={`
-              px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors
+              flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors shrink-0
               ${isActive
-                ? "border-[var(--color-forest)] text-[var(--color-forest)]"
+                ? "border-[var(--color-primary)] text-[var(--color-primary)]"
                 : "border-transparent text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:border-[var(--color-line)]"
               }
             `}
+            aria-selected={isActive}
+            role="tab"
           >
+            {tab.icon && <span className="[&>svg]:w-4 [&>svg]:h-4 shrink-0">{tab.icon}</span>}
             {tab.label}
             {tab.count !== undefined && (
-              <span
-                className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] ${
-                  isActive
-                    ? "bg-[var(--color-forest)] text-white"
-                    : "bg-[var(--color-line)] text-[var(--color-muted)]"
-                }`}
-              >
+              <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none ${
+                isActive
+                  ? "bg-[var(--color-primary)] text-white"
+                  : "bg-[var(--color-line)] text-[var(--color-muted)]"
+              }`}>
                 {tab.count}
               </span>
             )}
@@ -56,5 +59,5 @@ interface TabPanelProps {
 
 export function TabPanel({ id, active, children }: TabPanelProps) {
   if (id !== active) return null;
-  return <div>{children}</div>;
+  return <div className="animate-fade-in">{children}</div>;
 }

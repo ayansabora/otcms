@@ -1,21 +1,26 @@
 import type { ReactNode } from "react";
 
 interface EmptyStateProps {
-  icon?: string;
+  icon?: ReactNode;
   title: string;
   description?: string;
   action?: ReactNode;
+  culturalPattern?: boolean;
 }
 
-export function EmptyState({ icon = "📋", title, description, action }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action, culturalPattern = false }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-      <span className="text-4xl mb-4 opacity-40">{icon}</span>
-      <p className="font-medium text-[var(--color-ink)] mb-1">{title}</p>
-      {description && (
-        <p className="text-sm text-[var(--color-muted)] max-w-sm mb-4">{description}</p>
+    <div className={`flex flex-col items-center justify-center py-20 px-6 text-center relative ${culturalPattern ? "gadaa-pattern" : ""}`}>
+      {icon && (
+        <div className="mb-5 text-[var(--color-muted)] opacity-40 [&>svg]:w-16 [&>svg]:h-16">
+          {icon}
+        </div>
       )}
-      {action && <div className="mt-2">{action}</div>}
+      <h3 className="font-display text-lg text-[var(--color-ink)] mb-2">{title}</h3>
+      {description && (
+        <p className="text-sm text-[var(--color-muted)] max-w-md leading-relaxed mb-5">{description}</p>
+      )}
+      {action && <div>{action}</div>}
     </div>
   );
 }
