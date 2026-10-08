@@ -5,6 +5,7 @@ export interface ReportFilters {
   dateTo?: string;
   caseType?: string;
   format?: "json" | "csv";
+  [key: string]: string | undefined;
 }
 
 export interface CasesByStatusRow { status: string; count: number }

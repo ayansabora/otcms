@@ -10,7 +10,7 @@ export interface CreateCaseInput {
 }
 
 export const casesApi = {
-  list: (params: { page?: number; pageSize?: number; status?: CaseStatus; search?: string } = {}) =>
+  list: (params: { page?: number; pageSize?: number; status?: CaseStatus; caseType?: CaseType; search?: string } = {}) =>
     api.get<PaginatedResult<Case>>("/cases", params),
   get: (id: string) => api.get<{ case: Case }>(`/cases/${id}`),
   create: (input: CreateCaseInput) => api.post<{ case: Case }>("/cases", input),
