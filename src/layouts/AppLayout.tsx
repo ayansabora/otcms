@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Scale, Calendar, ScrollText, Users, FolderOpen,
   BarChart3, ShieldCheck, ClipboardList, Bell, Menu, X, LogOut,
-  ChevronDown, User, KeyRound, Settings, UsersRound, BookOpen,
+  ChevronDown, User, KeyRound, Settings,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { notificationsApi } from "../api/notifications";
@@ -34,10 +34,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/app/reports",     label: "Reports",             icon: <BarChart3 size={16} />,       group: "Reports",         permission: "report:generate" },
   // Administration — admin only
   { to: "/app/users",       label: "User Management",     icon: <ShieldCheck size={16} />,     group: "Administration",  permission: "user:manage" },
-  { to: "/app/permissions", label: "Roles & Permissions", icon: <UsersRound size={16} />,      group: "Administration",  permission: "role:manage" },
   { to: "/app/audit-logs",  label: "Audit Logs",          icon: <ClipboardList size={16} />,   group: "Administration",  permission: "audit:read" },
   { to: "/app/settings",    label: "System Settings",     icon: <Settings size={16} />,        group: "Administration",  permission: "user:manage" },
-  { to: "/app/roles",       label: "Actors & Roles",      icon: <BookOpen size={16} />,        group: "Administration" },
 ];
 
 const NAV_GROUPS = ["", "Case Management", "Community", "Documents", "Notifications", "Reports", "Administration"] as const;
