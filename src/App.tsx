@@ -51,6 +51,9 @@ import { AuditLogPage } from "./pages/audit/AuditLogPage";
 // Actors & Roles
 import { ActorsRolesPage } from "./pages/roles/ActorsRolesPage";
 
+// Roles & Permissions (Admin)
+import { PermissionsPage } from "./pages/admin/PermissionsPage";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -121,6 +124,9 @@ function App() {
 
               {/* Actors & Roles */}
               <Route path="roles" element={<ActorsRolesPage />} />
+
+              {/* Roles & Permissions (Admin) */}
+              <Route path="permissions" element={<PermissionsPage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/app" replace />} />

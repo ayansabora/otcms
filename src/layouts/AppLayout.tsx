@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Scale, Calendar, ScrollText, Users, FolderOpen,
   BarChart3, ShieldCheck, ClipboardList, Bell, Menu, X, LogOut,
-  ChevronDown, User, KeyRound, Settings, UsersRound,
+  ChevronDown, User, KeyRound, Settings, UsersRound, BookOpen,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { notificationsApi } from "../api/notifications";
@@ -19,25 +19,28 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/app",             label: "Dashboard",         icon: <LayoutDashboard size={16} />, end: true },
+  { to: "/app",             label: "Dashboard",           icon: <LayoutDashboard size={16} />, end: true },
   // Case Management
-  { to: "/app/cases",       label: "Cases",             icon: <Scale size={16} />,           group: "Case Management" },
-  { to: "/app/hearings",    label: "Hearings",          icon: <Calendar size={16} />,        group: "Case Management", permission: "case:view_all" },
-  { to: "/app/decisions",   label: "Decisions",         icon: <ScrollText size={16} />,      group: "Case Management", permission: "decision:record" },
+  { to: "/app/cases",       label: "Cases",               icon: <Scale size={16} />,           group: "Case Management" },
+  { to: "/app/hearings",    label: "Hearings",            icon: <Calendar size={16} />,        group: "Case Management", permission: "case:view_all" },
+  { to: "/app/decisions",   label: "Decisions",           icon: <ScrollText size={16} />,      group: "Case Management", permission: "decision:record" },
   // Community
-  { to: "/app/members",     label: "Community Members", icon: <Users size={16} />,           group: "Community",       permission: "member:view" },
+  { to: "/app/members",     label: "Community Members",   icon: <Users size={16} />,           group: "Community",       permission: "member:view" },
   // Documents
-  { to: "/app/documents",   label: "Documents",         icon: <FolderOpen size={16} />,      group: "Documents",       permission: "document:read" },
+  { to: "/app/documents",   label: "Documents",           icon: <FolderOpen size={16} />,      group: "Documents",       permission: "document:read" },
   // Notifications (all authenticated users)
-  { to: "/app/notifications", label: "Notifications",  icon: <Bell size={16} />,            group: "Notifications" },
-  // System — admin / manager only
-  { to: "/app/reports",     label: "Reports",           icon: <BarChart3 size={16} />,       group: "System",          permission: "report:generate" },
-  { to: "/app/users",       label: "Users",             icon: <ShieldCheck size={16} />,     group: "System",          permission: "user:manage" },
-  { to: "/app/audit-logs",  label: "Audit Log",         icon: <ClipboardList size={16} />,   group: "System",          permission: "audit:read" },
-  { to: "/app/roles",       label: "Actors & Roles",    icon: <UsersRound size={16} />,      group: "System" },
+  { to: "/app/notifications", label: "Notifications",    icon: <Bell size={16} />,            group: "Notifications" },
+  // Reports
+  { to: "/app/reports",     label: "Reports",             icon: <BarChart3 size={16} />,       group: "Reports",         permission: "report:generate" },
+  // Administration — admin only
+  { to: "/app/users",       label: "User Management",     icon: <ShieldCheck size={16} />,     group: "Administration",  permission: "user:manage" },
+  { to: "/app/permissions", label: "Roles & Permissions", icon: <UsersRound size={16} />,      group: "Administration",  permission: "role:manage" },
+  { to: "/app/audit-logs",  label: "Audit Logs",          icon: <ClipboardList size={16} />,   group: "Administration",  permission: "audit:read" },
+  { to: "/app/settings",    label: "System Settings",     icon: <Settings size={16} />,        group: "Administration",  permission: "user:manage" },
+  { to: "/app/roles",       label: "Actors & Roles",      icon: <BookOpen size={16} />,        group: "Administration" },
 ];
 
-const NAV_GROUPS = ["", "Case Management", "Community", "Documents", "Notifications", "System"] as const;
+const NAV_GROUPS = ["", "Case Management", "Community", "Documents", "Notifications", "Reports", "Administration"] as const;
 
 /* ── Notification Bell ─────────────────────────────────────────────────────── */
 function NotificationBell() {
