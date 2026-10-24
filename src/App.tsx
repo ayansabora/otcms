@@ -48,6 +48,9 @@ import { UsersListPage } from "./pages/users/UsersListPage";
 // Audit Log
 import { AuditLogPage } from "./pages/audit/AuditLogPage";
 
+// Actors & Roles
+import { ActorsRolesPage } from "./pages/roles/ActorsRolesPage";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -115,6 +118,9 @@ function App() {
 
               {/* Audit Log */}
               <Route path="audit-logs" element={<AuditLogPage />} />
+
+              {/* Actors & Roles */}
+              <Route path="roles" element={<ActorsRolesPage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/app" replace />} />
