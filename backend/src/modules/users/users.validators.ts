@@ -6,9 +6,6 @@ export const createUserSchema = z.object({
   fullName: z.string().min(2).max(255),
   phone: z.string().max(32).optional(),
   roleIds: z.array(z.string().uuid()).min(1, "At least one role is required"),
-  // Admin sets a temporary password; user should change it on first login.
-  // Server-generated is safer, but an admin-supplied temp password is
-  // supported for in-person onboarding at the court office.
   temporaryPassword: z
     .string()
     .min(12)
@@ -41,3 +38,32 @@ export const listUsersQuerySchema = paginationSchema.extend({
   roleId: z.string().uuid().optional(),
 });
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
+
+// Admin-initiated password reset — sets a new temporary password for any user.
+export const adminResetPasswordSchema = z.object({
+  newPassword: z
+    .string()
+    .min(12, "Password must be at least 12 characters")
+    .max(128)
+    .regex(/[A-Za-z]/, "Password must contain at least one letter")
+    .regex(/\d/, "Password must contain at least one number"),
+});
+export type AdminResetPasswordInput = z.infer<typeof adminResetPasswordSchema>;
+
+// Role CRUD
+export const createRoleSchema = z.object({
+  name: z
+    .string()
+    .min(2)
+    .max(64)
+    .regex(/^[A-Z0-9_]+$/, "Role name must be uppercase letters, numbers and underscores only"),
+  description: z.string().max(255).optional(),
+  permissionCodes: z.array(z.string().max(128)).default([]),
+});
+export type CreateRoleInput = z.infer<typeof createRoleSchema>;
+
+export const updateRoleSchema = z.object({
+  description: z.string().max(255).optional(),
+  permissionCodes: z.array(z.string().max(128)).optional(),
+});
+export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
