@@ -51,6 +51,9 @@ import { AuditLogPage } from "./pages/audit/AuditLogPage";
 // Actors & Roles
 import { ActorsRolesPage } from "./pages/roles/ActorsRolesPage";
 
+// Role Management (Admin)
+import { RoleManagementPage } from "./pages/admin/RoleManagementPage";
+
 // Roles & Permissions (Admin)
 import { PermissionsPage } from "./pages/admin/PermissionsPage";
 
@@ -118,6 +121,9 @@ function App() {
 
               {/* Users Administration */}
               <Route path="users" element={<UsersListPage />} />
+
+              {/* Role Management (Admin) */}
+              <Route path="role-management" element={<RoleManagementPage />} />
 
               {/* Audit Log */}
               <Route path="audit-logs" element={<AuditLogPage />} />

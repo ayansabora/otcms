@@ -212,6 +212,13 @@ const NAV_CONFIG: NavEntry[] = [
       },
       {
         kind: "leaf",
+        to: "/app/role-management",
+        label: "Role Management",
+        icon: <ShieldCheck size={15} />,
+        permission: "role:manage",
+      },
+      {
+        kind: "leaf",
         to: "/app/audit-logs",
         label: "Audit Logs",
         icon: <History size={15} />,

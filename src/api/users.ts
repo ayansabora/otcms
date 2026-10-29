@@ -14,7 +14,19 @@ export interface UpdateUserInput {
   phone?: string;
 }
 
+export interface CreateRoleInput {
+  name: string;
+  description?: string;
+  permissionCodes: string[];
+}
+
+export interface UpdateRoleInput {
+  description?: string;
+  permissionCodes?: string[];
+}
+
 export const usersApi = {
+  // ── User CRUD ──────────────────────────────────────────────────────────────
   list: (params: {
     page?: number;
     pageSize?: number;
@@ -37,5 +49,19 @@ export const usersApi = {
   assignRoles: (id: string, roleIds: string[]) =>
     api.patch<{ user: User }>(`/users/${id}/roles`, { roleIds }),
 
+  // Admin-initiated password reset — returns void (204)
+  adminResetPassword: (id: string, newPassword: string) =>
+    api.patch<void>(`/users/${id}/reset-password`, { newPassword }),
+
+  // ── Role CRUD ──────────────────────────────────────────────────────────────
   listRoles: () => api.get<{ roles: Role[] }>("/roles"),
+
+  createRole: (input: CreateRoleInput) =>
+    api.post<{ role: Role }>("/roles", input),
+
+  updateRole: (roleId: string, input: UpdateRoleInput) =>
+    api.patch<{ role: Role }>(`/roles/${roleId}`, input),
+
+  deleteRole: (roleId: string) =>
+    api.del<void>(`/roles/${roleId}`),
 };

@@ -195,6 +195,7 @@ export interface Role {
   id: string;
   name: string;
   description?: string | null;
+  permissions?: { permission: { id: string; code: string; description?: string | null } }[];
 }
 
 export interface User {
