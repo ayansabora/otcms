@@ -1,5 +1,5 @@
 import { prisma } from "../../database/prismaClient.js";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, $Enums } from "@prisma/client";
 
 const caseWithRelations = {
   include: {
@@ -21,59 +21,57 @@ export const casesRepository = {
 
   create(data: {
     caseNumber: string;
-    caseType: Prisma.CaseCreateInput["caseType"];
+    caseType: $Enums.CaseType;
     description: string;
     location?: string;
-    priority: Prisma.CaseCreateInput["priority"];
+    priority: $Enums.CasePriority;
     minWitnessesRequired: number;
     submittedByUserId?: string;
     parties: { communityMemberId: string; roleInCase: "COMPLAINANT" | "RESPONDENT" }[];
   }) {
-    return prisma.case.create({
-      data: {
-        caseNumber: data.caseNumber,
-        caseType: data.caseType,
-        description: data.description,
-        ...(data.location ? { location: data.location } : {}),
-        priority: data.priority,
-        minWitnessesRequired: data.minWitnessesRequired,
-        ...(data.submittedByUserId ? { submittedByUserId: data.submittedByUserId } : {}),
-        parties: { create: data.parties },
-        history: {
-          create: {
-            toStatus: "SUBMITTED",
-            ...(data.submittedByUserId ? { actorUserId: data.submittedByUserId } : {}),
-          },
-        },
-      },
-      ...caseWithRelations,
-    });
+    // Build data imperatively to satisfy exactOptionalPropertyTypes — Prisma's
+    // generated types require no `| undefined` on optional fields.
+    const historyCreate: Prisma.CaseHistoryCreateWithoutCaseInput = { toStatus: "SUBMITTED" };
+    if (data.submittedByUserId !== undefined) historyCreate.actorUserId = data.submittedByUserId;
+
+    const createData: Prisma.CaseCreateInput = {
+      caseNumber:            data.caseNumber,
+      caseType:              data.caseType,
+      description:           data.description,
+      priority:              data.priority,
+      minWitnessesRequired:  data.minWitnessesRequired,
+      parties:               { create: data.parties },
+      history:               { create: historyCreate },
+    };
+    if (data.location          !== undefined) createData.location          = data.location;
+    if (data.submittedByUserId !== undefined) createData.submittedByUserId = data.submittedByUserId;
+
+    return prisma.case.create({ data: createData, ...caseWithRelations });
   },
 
   findById(id: string) {
     return prisma.case.findUnique({ where: { id }, ...caseWithRelations });
   },
 
-  updateStatus(id: string, status: Prisma.CaseUpdateInput["status"]) {
+  updateStatus(id: string, status: $Enums.CaseStatus) {
     return prisma.case.update({ where: { id }, data: { status }, ...caseWithRelations });
   },
 
   addHistoryEntry(data: {
     caseId: string;
-    fromStatus?: Prisma.CaseHistoryCreateInput["fromStatus"];
-    toStatus: Prisma.CaseHistoryCreateInput["toStatus"];
+    fromStatus?: $Enums.CaseStatus;
+    toStatus: $Enums.CaseStatus;
     actorUserId?: string;
     note?: string;
   }) {
-    return prisma.caseHistory.create({
-      data: {
-        caseId: data.caseId,
-        ...(data.fromStatus ? { fromStatus: data.fromStatus } : {}),
-        toStatus: data.toStatus,
-        ...(data.actorUserId ? { actorUserId: data.actorUserId } : {}),
-        ...(data.note ? { note: data.note } : {}),
-      },
-    });
+    const entryData: Prisma.CaseHistoryCreateInput = {
+      case:     { connect: { id: data.caseId } },
+      toStatus: data.toStatus,
+    };
+    if (data.fromStatus  !== undefined) entryData.fromStatus  = data.fromStatus;
+    if (data.actorUserId !== undefined) entryData.actorUserId = data.actorUserId;
+    if (data.note        !== undefined) entryData.note        = data.note;
+    return prisma.caseHistory.create({ data: entryData });
   },
 
   getHistory(caseId: string) {
@@ -87,19 +85,26 @@ export const casesRepository = {
     ]);
   },
 
-  addWitness(data: { caseId: string; witnessId: string; testimonySummary?: string; communityMemberId?: string }) {
-    return prisma.caseWitness.create({
-      data: {
-        caseId: data.caseId,
-        witnessId: data.witnessId,
-        ...(data.testimonySummary ? { testimonySummary: data.testimonySummary, testifiedAt: new Date() } : {}),
-        ...(data.communityMemberId ? { communityMemberId: data.communityMemberId } : {}),
-      },
-    });
+  addWitness(data: {
+    caseId: string;
+    witnessId: string;
+    testimonySummary?: string;
+    communityMemberId?: string;
+  }) {
+    const witnessData: Prisma.CaseWitnessCreateInput = {
+      case:    { connect: { id: data.caseId } },
+      witness: { connect: { id: data.witnessId } },
+    };
+    if (data.testimonySummary  !== undefined) { witnessData.testimonySummary = data.testimonySummary; witnessData.testifiedAt = new Date(); }
+    if (data.communityMemberId !== undefined) witnessData.communityMember = { connect: { id: data.communityMemberId } };
+    return prisma.caseWitness.create({ data: witnessData });
   },
 
   createWitness(data: { fullName: string; phone?: string; communityMemberId?: string }) {
-    return prisma.witness.create({ data });
+    const d: Prisma.WitnessCreateInput = { fullName: data.fullName };
+    if (data.phone            !== undefined) d.phone            = data.phone;
+    if (data.communityMemberId !== undefined) d.communityMemberId = data.communityMemberId;
+    return prisma.witness.create({ data: d });
   },
 
   countWitnesses(caseId: string) {
@@ -114,45 +119,36 @@ export const casesRepository = {
     skip: number;
     take: number;
     search?: string;
-    status?: Prisma.CaseWhereInput["status"];
-    caseType?: Prisma.CaseWhereInput["caseType"];
+    status?: $Enums.CaseStatus;
+    caseType?: $Enums.CaseType;
     dateFrom?: Date;
     dateTo?: Date;
     onlyAssignedToUserId?: string;
     onlySubmittedByUserId?: string;
   }) {
-    const where: Prisma.CaseWhereInput = {
-      archivedAt: null,
-      ...(params.status ? { status: params.status } : {}),
-      ...(params.caseType ? { caseType: params.caseType } : {}),
-      ...(params.dateFrom || params.dateTo
-        ? {
-            createdAt: {
-              ...(params.dateFrom ? { gte: params.dateFrom } : {}),
-              ...(params.dateTo ? { lte: params.dateTo } : {}),
-            },
-          }
-        : {}),
-      ...(params.search
-        ? { OR: [{ caseNumber: { contains: params.search } }, { description: { contains: params.search } }] }
-        : {}),
-      ...(params.onlyAssignedToUserId
-        ? { assignments: { some: { userId: params.onlyAssignedToUserId, removedAt: null } } }
-        : {}),
-      ...(params.onlySubmittedByUserId ? { submittedByUserId: params.onlySubmittedByUserId } : {}),
-    };
+    const where: Prisma.CaseWhereInput = { archivedAt: null };
+    if (params.status)   where.status   = params.status;
+    if (params.caseType) where.caseType = params.caseType;
+    if (params.dateFrom || params.dateTo) {
+      where.createdAt = {};
+      if (params.dateFrom) where.createdAt.gte = params.dateFrom;
+      if (params.dateTo)   where.createdAt.lte = params.dateTo;
+    }
+    if (params.search) {
+      where.OR = [
+        { caseNumber:  { contains: params.search } },
+        { description: { contains: params.search } },
+      ];
+    }
+    if (params.onlyAssignedToUserId) {
+      where.assignments = { some: { userId: params.onlyAssignedToUserId, removedAt: null } };
+    }
+    if (params.onlySubmittedByUserId) where.submittedByUserId = params.onlySubmittedByUserId;
 
     const [items, total] = await prisma.$transaction([
-      prisma.case.findMany({
-        where,
-        skip: params.skip,
-        take: params.take,
-        orderBy: { createdAt: "desc" },
-        ...caseWithRelations,
-      }),
+      prisma.case.findMany({ where, skip: params.skip, take: params.take, orderBy: { createdAt: "desc" }, ...caseWithRelations }),
       prisma.case.count({ where }),
     ]);
-
     return { items, total };
   },
 };

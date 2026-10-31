@@ -8,27 +8,27 @@ function actorId(req: Request): string {
   return req.user.sub;
 }
 
+function requireParamId(req: Request): string {
+  const id = req.params["id"];
+  if (!id || typeof id !== "string") throw new ValidationError("id is required");
+  return id;
+}
+
 export const communityMembersController = {
   async register(req: Request, res: Response) {
     const input = registerMemberSchema.parse(req.body);
-    // Self-service (unauthenticated) registration is an open question — see
-    // docs/architecture.md §27 Q7. Until confirmed, this endpoint requires
-    // an authenticated Record Officer/Admin to register a member on someone's
-    // behalf (route-level requirePermission("member:register")).
     const member = await communityMembersService.register(input, actorId(req));
     res.status(201).json({ member });
   },
 
   async get(req: Request, res: Response) {
-    if (!req.params.id) throw new ValidationError("id is required");
-    const member = await communityMembersService.getById(req.params.id);
+    const member = await communityMembersService.getById(requireParamId(req));
     res.status(200).json({ member });
   },
 
   async verify(req: Request, res: Response) {
-    if (!req.params.id) throw new ValidationError("id is required");
     const input = verifyMemberSchema.parse(req.body);
-    const member = await communityMembersService.setVerification(req.params.id, input, actorId(req));
+    const member = await communityMembersService.setVerification(requireParamId(req), input, actorId(req));
     res.status(200).json({ member });
   },
 

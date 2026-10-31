@@ -33,15 +33,7 @@ export const hearingsRepository = {
 
   update(
     id: string,
-    data: Partial<{
-      startTime: Date;
-      endTime: Date;
-      scheduledDate: Date;
-      location: string;
-      status: Prisma.HearingUpdateInput["status"];
-      notes: string;
-      outcomeRef: string;
-    }>,
+    data: Prisma.HearingUpdateInput,
   ) {
     return prisma.hearing.update({ where: { id }, data, ...hearingWithRelations });
   },

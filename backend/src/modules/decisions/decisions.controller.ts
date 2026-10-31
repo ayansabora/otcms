@@ -9,8 +9,9 @@ function caller(req: Request) {
 }
 
 function requireId(req: Request): string {
-  if (!req.params.id) throw new ValidationError("id is required");
-  return req.params.id;
+  const id = req.params["id"];
+  if (!id || typeof id !== "string") throw new ValidationError("id is required");
+  return id;
 }
 
 export const decisionsController = {

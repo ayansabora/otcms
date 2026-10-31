@@ -23,8 +23,9 @@ export const notificationsController = {
   },
 
   async markRead(req: Request, res: Response) {
-    if (!req.params.id) throw new ValidationError("id is required");
-    await notificationsService.markRead(req.params.id, userId(req));
+    const id = req.params["id"];
+    if (!id || typeof id !== "string") throw new ValidationError("id is required");
+    await notificationsService.markRead(id, userId(req));
     res.status(204).send();
   },
 

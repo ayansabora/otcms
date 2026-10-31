@@ -6,7 +6,15 @@ import type { RegisterMemberInput, VerifyMemberInput, ListMembersQuery } from ".
 
 export const communityMembersService = {
   async register(input: RegisterMemberInput, actorUserId?: string) {
-    const member = await communityMembersRepository.create(input);
+    const member = await communityMembersRepository.create({
+      fullName: input.fullName,
+      ...(input.gender !== undefined      ? { gender: input.gender }                   : {}),
+      ...(input.dateOfBirth !== undefined  ? { dateOfBirth: input.dateOfBirth }         : {}),
+      ...(input.phone !== undefined        ? { phone: input.phone }                     : {}),
+      ...(input.address !== undefined      ? { address: input.address }                 : {}),
+      ...(input.kebele !== undefined       ? { kebele: input.kebele }                   : {}),
+      ...(input.identificationRef !== undefined ? { identificationRef: input.identificationRef } : {}),
+    });
     await recordAudit({
       ...(actorUserId ? { actorUserId } : {}),
       action: "member.registered",

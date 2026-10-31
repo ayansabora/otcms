@@ -4,12 +4,12 @@ import argon2 from "argon2";
 // GPU-cracking (unlike bcrypt/scrypt-only attacks) and side-channel attacks
 // (unlike pure Argon2i/Argon2d). Parameters below follow OWASP's current
 // baseline guidance for interactive login; revisit if server hardware changes.
-const ARGON2_OPTIONS: argon2.Options = {
+const ARGON2_OPTIONS = {
   type: argon2.argon2id,
   memoryCost: 19456, // ~19 MB
   timeCost: 2,
   parallelism: 1,
-};
+} as const;
 
 export async function hashPassword(plain: string): Promise<string> {
   return argon2.hash(plain, ARGON2_OPTIONS);
