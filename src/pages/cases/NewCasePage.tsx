@@ -118,13 +118,14 @@ export function NewCasePage() {
   const [submitting, setSubmitting]       = useState(false);
 
   /* ── Data ─────────────────────────────────────────────────────────────── */
-  const { data: membersData, isLoading: membersLoading } = useQuery({
-    queryKey: ["community-members", "for-case-register", memberSearch],
+  const { data: membersData, isLoading: membersLoading, isError: membersError, refetch: refetchMembers } = useQuery({
+    queryKey: ["community-members", { search: memberSearch }],
     queryFn: () => communityMembersApi.list({
       pageSize: 200,
       search: memberSearch || undefined,
     }),
-    staleTime: 10_000,
+    staleTime: 5_000,
+    retry: 2,
   });
 
   const allMembers     = membersData?.items ?? [];
@@ -292,7 +293,11 @@ export function NewCasePage() {
               value={memberSearch}
               onChange={(e) => setMemberSearch(e.target.value)}
               placeholder="Type name to search…"
-              hint={membersLoading ? "Searching…" : `${allMembers.length} member${allMembers.length !== 1 ? "s" : ""} found`}
+              hint={
+                membersLoading ? "Loading members…" :
+                membersError   ? "Could not load members — see error below" :
+                `${allMembers.length} member${allMembers.length !== 1 ? "s" : ""} found`
+              }
             />
 
             <Select
@@ -327,11 +332,21 @@ export function NewCasePage() {
               )}
             </Select>
 
-            {allMembers.length === 0 && !membersLoading && (
+    {allMembers.length === 0 && !membersLoading && !membersError && (
               <AlertMessage
                 variant="warning"
                 message="No community members found. Register a member before registering a case."
               />
+            )}
+            {membersError && (
+              <div className="flex items-center justify-between rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger-bg)] px-4 py-3">
+                <p className="text-sm text-[var(--color-danger)]">
+                  Could not load community members. Check that the backend is running and you are logged in.
+                </p>
+                <Button variant="ghost" size="sm" onClick={() => refetchMembers()} className="text-[var(--color-danger)] ml-3 shrink-0">
+                  Retry
+                </Button>
+              </div>
             )}
 
             {/* Selected complainant profile card */}
