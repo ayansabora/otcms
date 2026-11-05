@@ -6,6 +6,7 @@ export interface CreateCaseInput {
   description: string;
   location?: string;
   priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  jurisdictionBasis?: string;
   parties: { communityMemberId: string; roleInCase: "COMPLAINANT" | "RESPONDENT" }[];
 }
 
@@ -13,7 +14,8 @@ export const casesApi = {
   list: (params: { page?: number; pageSize?: number; status?: CaseStatus; caseType?: CaseType; search?: string } = {}) =>
     api.get<PaginatedResult<Case>>("/cases", params),
   get: (id: string) => api.get<{ case: Case }>(`/cases/${id}`),
-  create: (input: CreateCaseInput) => api.post<{ case: Case }>("/cases", input),
+  create: (input: CreateCaseInput) =>
+    api.post<{ case: Case; duplicateWarning?: string }>("/cases", input),
   transition: (id: string, toStatus: CaseStatus, note?: string) =>
     api.post<{ case: Case }>(`/cases/${id}/transition`, { toStatus, note }),
   assignPanel: (id: string, userIds: string[], leadUserId?: string) =>

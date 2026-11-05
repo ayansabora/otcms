@@ -23,9 +23,7 @@ export const createCaseSchema = z.object({
   location: z.string().max(255).optional(),
   priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL"),
   parties: z.array(casePartySchema).min(1, "At least one party is required"),
-  // Overrides the type-based default only if explicitly provided and only
-  // by someone with case:create — the default itself comes from workflow
-  // config, not the client.
+  jurisdictionBasis: z.string().max(500).optional(),
   minWitnessesRequired: z.number().int().min(0).max(20).optional(),
 });
 export type CreateCaseInput = z.infer<typeof createCaseSchema>;

@@ -24,13 +24,12 @@ export const casesRepository = {
     caseType: $Enums.CaseType;
     description: string;
     location?: string;
+    jurisdictionBasis?: string;
     priority: $Enums.CasePriority;
     minWitnessesRequired: number;
     submittedByUserId?: string;
     parties: { communityMemberId: string; roleInCase: "COMPLAINANT" | "RESPONDENT" }[];
   }) {
-    // Build data imperatively to satisfy exactOptionalPropertyTypes — Prisma's
-    // generated types require no `| undefined` on optional fields.
     const historyCreate: Prisma.CaseHistoryCreateWithoutCaseInput = { toStatus: "SUBMITTED" };
     if (data.submittedByUserId !== undefined) historyCreate.actorUserId = data.submittedByUserId;
 
@@ -44,6 +43,7 @@ export const casesRepository = {
       history:               { create: historyCreate },
     };
     if (data.location          !== undefined) createData.location          = data.location;
+    if (data.jurisdictionBasis !== undefined) createData.jurisdictionBasis = data.jurisdictionBasis;
     if (data.submittedByUserId !== undefined) createData.submittedByUserId = data.submittedByUserId;
 
     return prisma.case.create({ data: createData, ...caseWithRelations });
@@ -109,6 +109,25 @@ export const casesRepository = {
 
   countWitnesses(caseId: string) {
     return prisma.caseWitness.count({ where: { caseId } });
+  },
+
+  findOpenCaseByParties(complainantId: string, respondentId: string, caseType: string) {
+    return prisma.case.findFirst({
+      where: {
+        archivedAt: null,
+        caseType:   caseType as never,
+        status:     { notIn: ["CLOSED", "REJECTED", "WITHDRAWN"] },
+        parties: {
+          some: { communityMemberId: complainantId, roleInCase: "COMPLAINANT" },
+        },
+        AND: {
+          parties: {
+            some: { communityMemberId: respondentId, roleInCase: "RESPONDENT" },
+          },
+        },
+      },
+      select: { id: true, caseNumber: true },
+    });
   },
 
   isUserAssigned(caseId: string, userId: string) {

@@ -21,6 +21,9 @@ import { notificationsRouter } from "./modules/notifications/notifications.route
 import { reportsRouter } from "./modules/reports/reports.routes.js";
 import { auditRouter } from "./modules/audit/audit.routes.js";
 import { usersRouter, rolesRouter } from "./modules/users/users.routes.js";
+import { summonsRouter } from "./modules/summons/summons.routes.js";
+import { consentRouter } from "./modules/consent/consent.routes.js";
+import { appealsRouter } from "./modules/appeals/appeals.routes.js";
 
 export function createApp(): Express {
   const app = express();
@@ -71,6 +74,9 @@ export function createApp(): Express {
   app.use("/api/v1/audit-logs", auditRouter);
   app.use("/api/v1/users", usersRouter);
   app.use("/api/v1/roles", rolesRouter);
+  app.use("/api/v1/summons",  summonsRouter);
+  app.use("/api/v1/consent",  consentRouter);
+  app.use("/api/v1/appeals",  appealsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

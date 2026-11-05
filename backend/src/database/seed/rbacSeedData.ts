@@ -1,71 +1,65 @@
 import { prisma } from "../prismaClient.js";
 
-/**
- * Permission codes and the draft role/permission matrix (docs/architecture.md
- * §6). Extracted here so the seed script and integration test setup share
- * one source of truth instead of drifting apart.
- */
 export const PERMISSIONS = [
-  { code: "user:manage", description: "Create, update, activate/deactivate users" },
-  { code: "role:manage", description: "Manage roles and permissions" },
-  { code: "audit:read", description: "View audit logs" },
-  { code: "member:register", description: "Register a community member" },
-  { code: "member:verify", description: "Verify a community member" },
-  { code: "member:view", description: "View community member records" },
-  { code: "case:create", description: "Register a new case" },
-  { code: "case:view_all", description: "View all cases" },
-  { code: "case:view_assigned", description: "View cases assigned to self" },
-  { code: "case:view_own", description: "View own submitted cases" },
-  { code: "case:update", description: "Update case details" },
-  { code: "case:assign", description: "Assign/reassign a case to elders" },
-  { code: "case:transition", description: "Move a case through workflow states" },
-  { code: "hearing:manage", description: "Schedule and manage hearings" },
-  { code: "decision:record", description: "Record a decision" },
-  { code: "decision:approve", description: "Approve/finalize a decision (panel elder)" },
-  { code: "document:upload", description: "Upload a document" },
-  { code: "document:read", description: "Download/view an authorized document" },
-  { code: "report:generate", description: "Generate reports" },
+  { code: "user:manage",       description: "Create, update, activate/deactivate users" },
+  { code: "role:manage",       description: "Manage roles and permissions" },
+  { code: "audit:read",        description: "View audit logs" },
+  { code: "member:register",   description: "Register a community member" },
+  { code: "member:verify",     description: "Verify a community member" },
+  { code: "member:view",       description: "View community member records" },
+  { code: "case:create",       description: "Register a new case" },
+  { code: "case:view_all",     description: "View all cases" },
+  { code: "case:view_assigned",description: "View cases assigned to self" },
+  { code: "case:view_own",     description: "View own submitted cases" },
+  { code: "case:update",       description: "Update case details" },
+  { code: "case:assign",       description: "Assign/reassign a case to elders" },
+  { code: "case:transition",   description: "Move a case through workflow states" },
+  { code: "hearing:manage",    description: "Schedule and manage hearings" },
+  { code: "decision:record",   description: "Record a decision" },
+  { code: "decision:approve",  description: "Approve/finalize a decision (panel elder)" },
+  { code: "document:upload",   description: "Upload a document" },
+  { code: "document:read",     description: "Download/view an authorized document" },
+  { code: "report:generate",   description: "Generate reports" },
+  // ── New permissions (Summons, Consent, Appeal) ──────────────────────
+  { code: "summons:manage",    description: "Issue and record summons" },
+  { code: "summons:read",      description: "View summons records" },
+  { code: "consent:manage",    description: "Record and manage party consent" },
+  { code: "consent:read",      description: "View consent records" },
+  { code: "appeal:manage",     description: "File and manage appeals" },
+  { code: "appeal:read",       description: "View appeal records" },
 ] as const;
 
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
   ADMIN: [
-    "user:manage",
-    "role:manage",
-    "audit:read",
-    "member:register",
-    "member:view",
-    "case:view_all",
-    "case:assign",
-    "document:upload",
-    "document:read",
-    "report:generate",
+    "user:manage", "role:manage", "audit:read",
+    "member:register", "member:view",
+    "case:view_all", "case:assign",
+    "document:upload", "document:read", "report:generate",
+    "summons:read", "consent:read", "appeal:read",
   ],
   COURT_MANAGER: [
-    "member:verify",
-    "member:view",
-    "case:view_assigned",
-    "case:transition",
+    "member:verify", "member:view",
+    "case:view_assigned", "case:transition",
     "hearing:manage",
-    "decision:record",
-    "decision:approve",
-    "document:upload",
-    "document:read",
-    "report:generate",
+    "decision:record", "decision:approve",
+    "document:upload", "document:read", "report:generate",
+    "summons:manage", "summons:read",
+    "consent:manage", "consent:read",
+    "appeal:manage", "appeal:read",
   ],
   RECORD_OFFICER: [
-    "member:register",
-    "member:view",
-    "case:create",
-    "case:view_all",
-    "case:update",
-    "case:transition",
-    "case:assign",
+    "member:register", "member:view",
+    "case:create", "case:view_all", "case:update", "case:transition", "case:assign",
     "hearing:manage",
-    "document:upload",
-    "document:read",
-    "report:generate",
+    "document:upload", "document:read", "report:generate",
+    "summons:manage", "summons:read",
+    "consent:manage", "consent:read",
+    "appeal:manage", "appeal:read",
   ],
-  COMMUNITY_MEMBER: ["case:view_own", "document:read"],
+  COMMUNITY_MEMBER: [
+    "case:view_own", "document:read",
+    "consent:read", "appeal:read",
+  ],
 };
 
 export async function seedRolesAndPermissions(): Promise<void> {
@@ -75,7 +69,11 @@ export async function seedRolesAndPermissions(): Promise<void> {
   });
 
   for (const roleName of Object.keys(ROLE_PERMISSIONS)) {
-    await prisma.role.upsert({ where: { name: roleName }, update: {}, create: { name: roleName } });
+    await prisma.role.upsert({
+      where: { name: roleName },
+      update: {},
+      create: { name: roleName },
+    });
   }
 
   const allPermissions = await prisma.permission.findMany();

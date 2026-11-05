@@ -51,11 +51,26 @@ export const casesService = {
     const minWitnessesRequired =
       input.minWitnessesRequired ?? DEFAULT_MIN_WITNESSES[input.caseType] ?? 0;
 
+    // BR-CR-007: warn if same complainant+respondent already have an open case
+    // of the same type (does NOT block — just returns a warning flag in the response).
+    const complainantId = input.parties.find((p) => p.roleInCase === "COMPLAINANT")?.communityMemberId;
+    const respondentId  = input.parties.find((p) => p.roleInCase === "RESPONDENT")?.communityMemberId;
+    let duplicateWarning: string | undefined;
+    if (complainantId && respondentId) {
+      const possibleDuplicate = await casesRepository.findOpenCaseByParties(
+        complainantId, respondentId, input.caseType,
+      );
+      if (possibleDuplicate) {
+        duplicateWarning = `Warning: Case ${possibleDuplicate.caseNumber} already exists between these parties for the same case type.`;
+      }
+    }
+
     const createdCase = await casesRepository.create({
       caseNumber,
       caseType: input.caseType,
       description: input.description,
-      ...(input.location ? { location: input.location } : {}),
+      ...(input.location         ? { location:         input.location }         : {}),
+      ...(input.jurisdictionBasis? { jurisdictionBasis: input.jurisdictionBasis }: {}),
       priority: input.priority,
       minWitnessesRequired,
       submittedByUserId: caller.userId,
@@ -70,7 +85,7 @@ export const casesService = {
       after: { caseNumber, caseType: input.caseType },
     });
 
-    return createdCase;
+    return { case: createdCase, duplicateWarning };
   },
 
   async getByIdForCaller(id: string, caller: CallerContext) {

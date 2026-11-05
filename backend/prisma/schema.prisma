@@ -44,6 +44,11 @@ model User {
   auditLogs          AuditLog[]
   hearingParticipant HearingParticipant[]
   refreshTokens      RefreshToken[]
+  summonsIssued      Summons[]          @relation("SummonsIssuedBy")
+  summonsServed      Summons[]          @relation("SummonsServedBy")
+  consentRecords     ConsentRecord[]    @relation("ConsentRecordedBy")
+  appealsFiledBy     Appeal[]           @relation("AppealFiledBy")
+  appealsTransferred Appeal[]           @relation("AppealTransferredBy")
 
   @@map("users")
 }
@@ -158,6 +163,8 @@ model CommunityMember {
   user           User?          @relation(fields: [userId], references: [id])
   caseParties    CaseParty[]
   caseWitnesses  CaseWitness[]
+  summonsReceived Summons[]     @relation("SummonsRespondent")
+  consentRecords  ConsentRecord[] @relation("ConsentMember")
 
   @@index([verificationStatus])
   @@map("community_members")
@@ -182,6 +189,10 @@ model Case {
   description  String     @db.Text
   location     String?    @db.VarChar(255)
   submittedByUserId String? @map("submitted_by_user_id")
+  // Jurisdiction basis — required per BR-JR-003 before advancing past SUBMITTED
+  jurisdictionBasis       String?   @map("jurisdiction_basis") @db.VarChar(500)
+  jurisdictionVerifiedAt  DateTime? @map("jurisdiction_verified_at")
+  jurisdictionVerifiedByUserId String? @map("jurisdiction_verified_by_user_id")
   // Configurable minimum witnesses required before this case may leave UNDER_REVIEW
   // (see blueprint §11 rules 2-3). Default is a placeholder pending confirmation.
   minWitnessesRequired Int @default(2) @map("min_witnesses_required")
@@ -196,6 +207,9 @@ model Case {
   decisions   Decision[]
   documents   Document[]
   history     CaseHistory[]
+  summons     Summons[]
+  consentRecords ConsentRecord[]
+  appeals     Appeal[]
 
   @@index([status])
   @@index([caseType])
@@ -291,6 +305,7 @@ model CaseAssignment {
   roleInPanel PanelRole @default(MEMBER) @map("role_in_panel")
   assignedAt DateTime @default(now()) @map("assigned_at")
   removedAt  DateTime? @map("removed_at")
+  conflictDeclared Boolean @default(false) @map("conflict_declared")
 
   case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id])
@@ -359,7 +374,9 @@ model HearingParticipant {
   communityMemberId String?  @map("community_member_id") // party
   witnessId         String?  @map("witness_id")
   role              String   @db.VarChar(64) // e.g. ELDER, COMPLAINANT, RESPONDENT, WITNESS
-  attended          Boolean? 
+  attended          Boolean?
+  attendedAt        DateTime? @map("attended_at")
+  absenceReason     String?   @map("absence_reason") @db.VarChar(255)
 
   hearing Hearing @relation(fields: [hearingId], references: [id], onDelete: Cascade)
   user    User?   @relation(fields: [userId], references: [id])
@@ -379,6 +396,7 @@ model Decision {
   description    String          @db.Text
   remarks        String?         @db.Text
   approvalStatus DecisionApprovalStatus @default(PENDING) @map("approval_status")
+  decisionType   DecisionType           @default(RULING) @map("decision_type")
   // Configurable consensus threshold (see blueprint §11) — default pending confirmation.
   requiredApprovals Int @default(2) @map("required_approvals")
   finalizedAt    DateTime?       @map("finalized_at")
@@ -396,6 +414,11 @@ enum DecisionApprovalStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum DecisionType {
+  RECONCILIATION
+  RULING
 }
 
 model DecisionApproval {
@@ -478,4 +501,95 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Summons
+// Tracks every formal summons issued to the respondent.
+// Up to 3 attempts before in-absentia proceedings may begin.
+// ─────────────────────────────────────────────────────────────────────────
+
+model Summons {
+  id               String         @id @default(uuid(7))
+  caseId           String         @map("case_id")
+  respondentId     String         @map("respondent_id") // CommunityMember id
+  attemptNumber    Int            @default(1) @map("attempt_number")
+  issuedAt         DateTime       @default(now()) @map("issued_at")
+  issuedByUserId   String         @map("issued_by_user_id")
+  serviceMethod    SummonsMethod  @default(PERSONAL) @map("service_method")
+  servedAt         DateTime?      @map("served_at")
+  servedToName     String?        @map("served_to_name") @db.VarChar(255)
+  servedByUserId   String?        @map("served_by_user_id")
+  notes            String?        @db.Text
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  case             Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  respondent       CommunityMember @relation("SummonsRespondent", fields: [respondentId], references: [id])
+  issuedBy         User           @relation("SummonsIssuedBy", fields: [issuedByUserId], references: [id])
+  servedByUser     User?          @relation("SummonsServedBy", fields: [servedByUserId], references: [id])
+
+  @@index([caseId])
+  @@map("summons")
+}
+
+enum SummonsMethod {
+  PERSONAL
+  REPRESENTATIVE
+  POSTED
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Consent Records
+// Records explicit consent of each party to OTC jurisdiction.
+// Required per Proclamation 240/2021 Art. 13 before case advances.
+// ─────────────────────────────────────────────────────────────────────────
+
+model ConsentRecord {
+  id                String    @id @default(uuid(7))
+  caseId            String    @map("case_id")
+  communityMemberId String    @map("community_member_id")
+  consentGiven      Boolean   @map("consent_given")
+  consentDate       DateTime  @default(now()) @map("consent_date")
+  recordedByUserId  String    @map("recorded_by_user_id")
+  notes             String?   @db.Text
+  withdrawnAt       DateTime? @map("withdrawn_at")
+  withdrawalReason  String?   @map("withdrawal_reason") @db.VarChar(500)
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  case             Case            @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  communityMember  CommunityMember @relation("ConsentMember", fields: [communityMemberId], references: [id])
+  recordedBy       User            @relation("ConsentRecordedBy", fields: [recordedByUserId], references: [id])
+
+  @@unique([caseId, communityMemberId])
+  @@index([caseId])
+  @@map("consent_records")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Appeals
+// Links back to the original case. Records filing, transfer, and outcome.
+// ─────────────────────────────────────────────────────────────────────────
+
+model Appeal {
+  id                  String        @id @default(uuid(7))
+  caseId              String        @map("case_id")
+  filedAt             DateTime      @default(now()) @map("filed_at")
+  filedByUserId       String        @map("filed_by_user_id")
+  appellantPartyRole  CasePartyRole @map("appellant_party_role")
+  groundsForAppeal    String        @map("grounds_for_appeal") @db.Text
+  appellateCourtName  String        @map("appellate_court_name") @db.VarChar(255)
+  transferredAt       DateTime?     @map("transferred_at")
+  transferredByUserId String?       @map("transferred_by_user_id")
+  outcome             String?       @db.VarChar(255)
+  outcomeReceivedAt   DateTime?     @map("outcome_received_at")
+  outcomeNotes        String?       @map("outcome_notes") @db.Text
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  case             Case  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  filedBy          User  @relation("AppealFiledBy", fields: [filedByUserId], references: [id])
+  transferredBy    User? @relation("AppealTransferredBy", fields: [transferredByUserId], references: [id])
+
+  @@index([caseId])
+  @@map("appeals")
 }

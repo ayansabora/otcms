@@ -23,8 +23,8 @@ function requireId(req: Request): string {
 export const casesController = {
   async create(req: Request, res: Response) {
     const input = createCaseSchema.parse(req.body);
-    const createdCase = await casesService.create(input, callerContext(req));
-    res.status(201).json({ case: createdCase });
+    const result = await casesService.create(input, callerContext(req));
+    res.status(201).json({ case: result.case, duplicateWarning: result.duplicateWarning });
   },
 
   async get(req: Request, res: Response) {

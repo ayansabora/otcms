@@ -5,8 +5,12 @@ import { casesApi } from "../../api/cases";
 import { hearingsApi } from "../../api/hearings";
 import { decisionsApi } from "../../api/decisions";
 import { documentsApi } from "../../api/documents";
+import { summonsApi } from "../../api/summons";
+import { consentApi } from "../../api/consent";
+import { appealsApi } from "../../api/appeals";
 import { ApiError } from "../../api/client";
 import { StatusBadge, PriorityBadge } from "../../components/StatusBadge";
+import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { PageHeader } from "../../components/PageHeader";
 import { Card, CardHeader, CardBody } from "../../components/Card";
@@ -69,6 +73,24 @@ export function CaseDetailPage() {
     enabled: !!id && activeTab === "documents",
   });
 
+  const { data: summonsData } = useQuery({
+    queryKey: ["summons", "by-case", id],
+    queryFn: () => summonsApi.list({ caseId: id }),
+    enabled: !!id && activeTab === "summons",
+  });
+
+  const { data: consentData } = useQuery({
+    queryKey: ["consent", "by-case", id],
+    queryFn: () => consentApi.listByCase(id!),
+    enabled: !!id && activeTab === "consent",
+  });
+
+  const { data: appealsData } = useQuery({
+    queryKey: ["appeals", "by-case", id],
+    queryFn: () => appealsApi.list({ caseId: id }),
+    enabled: !!id && activeTab === "appeals",
+  });
+
   const transitionMutation = useMutation({
     mutationFn: ({ toStatus }: { toStatus: CaseStatus }) => casesApi.transition(id!, toStatus),
     onSuccess: () => {
@@ -94,13 +116,16 @@ export function CaseDetailPage() {
   const respondent = c.parties.find((p) => p.roleInCase === "RESPONDENT");
 
   const tabs = [
-    { id: "overview", label: "Overview" },
-    { id: "witnesses", label: "Witnesses", count: c.witnesses?.length ?? 0 },
-    { id: "panel", label: "Elder Panel", count: c.assignments.length },
-    { id: "hearings", label: "Hearings", count: hearingsData?.total ?? 0 },
-    { id: "documents", label: "Documents", count: documentsData?.documents.length ?? 0 },
-    { id: "decision", label: "Decision" },
-    { id: "history", label: "History", count: historyData?.history.length ?? 0 },
+    { id: "overview",  label: "Overview" },
+    { id: "witnesses", label: "Witnesses",   count: c.witnesses?.length ?? 0 },
+    { id: "panel",     label: "Elder Panel", count: c.assignments.length },
+    { id: "hearings",  label: "Hearings",    count: hearingsData?.total ?? 0 },
+    { id: "documents", label: "Documents",   count: documentsData?.documents.length ?? 0 },
+    { id: "decision",  label: "Decision" },
+    { id: "summons",   label: "Summons",     count: summonsData?.total ?? 0 },
+    { id: "consent",   label: "Consent",     count: consentData?.consents.length ?? 0 },
+    { id: "appeals",   label: "Appeals",     count: appealsData?.total ?? 0 },
+    { id: "history",   label: "History",     count: historyData?.history.length ?? 0 },
   ];
 
   return (
@@ -427,6 +452,91 @@ export function CaseDetailPage() {
                   </li>
                 ))}
               </ol>
+            </div>
+          )}
+        </Card>
+      </TabPanel>
+
+      {/* Summons */}
+      <TabPanel id="summons" active={activeTab}>
+        <Card>
+          <CardHeader title="Summons" subtitle="Formal notices issued to the respondent" />
+          {!summonsData?.items.length ? (
+            <EmptyState title="No summons issued yet" description="Issue a summons to the respondent after case review." />
+          ) : (
+            <div className="divide-y divide-[var(--color-line)]">
+              {summonsData.items.map((s) => (
+                <div key={s.id} className="px-5 py-4">
+                  <div className="flex items-start justify-between mb-1">
+                    <p className="font-semibold text-sm">Attempt {s.attemptNumber} — {s.serviceMethod.replace(/_/g, " ")}</p>
+                    {s.servedAt
+                      ? <Badge variant="success">Served</Badge>
+                      : <Badge variant="warning">Pending Service</Badge>
+                    }
+                  </div>
+                  <p className="text-xs text-[var(--color-muted)]">Issued: {new Date(s.issuedAt).toLocaleDateString()}</p>
+                  {s.servedAt && <p className="text-xs text-[var(--color-muted)]">Served to: {s.servedToName} on {new Date(s.servedAt).toLocaleDateString()}</p>}
+                  {s.notes && <p className="text-xs text-[var(--color-muted)] mt-1">{s.notes}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </TabPanel>
+
+      {/* Consent */}
+      <TabPanel id="consent" active={activeTab}>
+        <Card>
+          <CardHeader title="Party Consent" subtitle="Consent of each party to OTC jurisdiction (required per Proclamation 240/2021 Art. 13)" />
+          {!consentData?.consents.length ? (
+            <EmptyState title="No consent recorded" description="Record the consent of both parties before proceeding." />
+          ) : (
+            <div className="divide-y divide-[var(--color-line)]">
+              {consentData.consents.map((cr) => (
+                <div key={cr.id} className="px-5 py-4 flex items-start justify-between">
+                  <div>
+                    <p className="font-semibold text-sm">{cr.communityMember?.fullName ?? "Unknown"}</p>
+                    <p className="text-xs text-[var(--color-muted)] mt-0.5">{new Date(cr.consentDate).toLocaleDateString()}</p>
+                    {cr.withdrawnAt && <p className="text-xs text-[var(--color-danger)] mt-1">Withdrawn: {cr.withdrawalReason}</p>}
+                    {cr.notes && <p className="text-xs text-[var(--color-muted)] mt-1">{cr.notes}</p>}
+                  </div>
+                  {cr.withdrawnAt
+                    ? <Badge variant="danger">Withdrawn</Badge>
+                    : cr.consentGiven
+                      ? <Badge variant="success">Consented</Badge>
+                      : <Badge variant="danger">Refused</Badge>
+                  }
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </TabPanel>
+
+      {/* Appeals */}
+      <TabPanel id="appeals" active={activeTab}>
+        <Card>
+          <CardHeader title="Appeals" subtitle="Appeals filed to the Woreda/Zone Appellate Customary Court" />
+          {!appealsData?.items.length ? (
+            <EmptyState title="No appeals filed" description="Appeals may be filed after a decision is finalized." />
+          ) : (
+            <div className="divide-y divide-[var(--color-line)]">
+              {appealsData.items.map((ap) => (
+                <div key={ap.id} className="px-5 py-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="font-semibold text-sm">{ap.appellantPartyRole} — {ap.appellateCourtName}</p>
+                    {ap.outcome
+                      ? <Badge variant="success">Outcome Received</Badge>
+                      : ap.transferredAt
+                        ? <Badge variant="info">Transferred</Badge>
+                        : <Badge variant="warning">Pending Transfer</Badge>
+                    }
+                  </div>
+                  <p className="text-xs text-[var(--color-muted)]">Filed: {new Date(ap.filedAt).toLocaleDateString()}</p>
+                  <p className="text-sm text-[var(--color-ink)] mt-1 leading-relaxed">{ap.groundsForAppeal}</p>
+                  {ap.outcome && <p className="text-sm font-medium text-[var(--color-success)] mt-2">Outcome: {ap.outcome}</p>}
+                </div>
+              ))}
             </div>
           )}
         </Card>

@@ -133,6 +133,7 @@ export interface HearingParticipant {
 // ── Decisions ─────────────────────────────────────────────────────────────────
 
 export type DecisionApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type DecisionType           = "RECONCILIATION" | "RULING";
 
 export interface DecisionApproval {
   id: string;
@@ -148,6 +149,7 @@ export interface Decision {
   id: string;
   caseId: string;
   decisionDate?: string | null;
+  decisionType: DecisionType;
   outcome: string;
   description: string;
   remarks?: string | null;
@@ -219,4 +221,59 @@ export interface PaginatedResult<T> {
   pageSize: number;
   total: number;
   totalPages: number;
+}
+
+// ── Summons ───────────────────────────────────────────────────────────────────
+
+export type SummonsMethod = "PERSONAL" | "REPRESENTATIVE" | "POSTED";
+
+export interface Summons {
+  id: string;
+  caseId: string;
+  respondentId: string;
+  attemptNumber: number;
+  issuedAt: string;
+  serviceMethod: SummonsMethod;
+  servedAt?: string | null;
+  servedToName?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  respondent?: { id: string; fullName: string; phone?: string | null };
+  issuedBy?: { id: string; fullName: string };
+  servedByUser?: { id: string; fullName: string } | null;
+}
+
+// ── Consent Records ───────────────────────────────────────────────────────────
+
+export interface ConsentRecord {
+  id: string;
+  caseId: string;
+  communityMemberId: string;
+  consentGiven: boolean;
+  consentDate: string;
+  notes?: string | null;
+  withdrawnAt?: string | null;
+  withdrawalReason?: string | null;
+  createdAt: string;
+  communityMember?: { id: string; fullName: string; phone?: string | null };
+  recordedBy?: { id: string; fullName: string };
+}
+
+// ── Appeals ───────────────────────────────────────────────────────────────────
+
+export interface Appeal {
+  id: string;
+  caseId: string;
+  filedAt: string;
+  appellantPartyRole: "COMPLAINANT" | "RESPONDENT";
+  groundsForAppeal: string;
+  appellateCourtName: string;
+  transferredAt?: string | null;
+  outcome?: string | null;
+  outcomeReceivedAt?: string | null;
+  outcomeNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  filedBy?: { id: string; fullName: string };
+  transferredBy?: { id: string; fullName: string } | null;
 }

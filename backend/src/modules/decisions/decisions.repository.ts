@@ -8,23 +8,23 @@ const decisionWithRelations = {
 export const decisionsRepository = {
   create(data: {
     caseId: string;
+    decisionType?: "RECONCILIATION" | "RULING";
     outcome: string;
     description: string;
     remarks?: string;
     decisionDate?: Date;
     requiredApprovals: number;
   }) {
-    return prisma.decision.create({
-      data: {
-        caseId: data.caseId,
-        outcome: data.outcome,
-        description: data.description,
-        ...(data.remarks ? { remarks: data.remarks } : {}),
-        ...(data.decisionDate ? { decisionDate: data.decisionDate } : {}),
-        requiredApprovals: data.requiredApprovals,
-      },
-      ...decisionWithRelations,
-    });
+    const d: Prisma.DecisionCreateInput = {
+      case:              { connect: { id: data.caseId } },
+      decisionType:      data.decisionType ?? "RULING",
+      outcome:           data.outcome,
+      description:       data.description,
+      requiredApprovals: data.requiredApprovals,
+    };
+    if (data.remarks      !== undefined) d.remarks      = data.remarks;
+    if (data.decisionDate !== undefined) d.decisionDate = data.decisionDate;
+    return prisma.decision.create({ data: d, ...decisionWithRelations });
   },
 
   findById(id: string) {

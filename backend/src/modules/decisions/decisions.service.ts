@@ -45,10 +45,11 @@ export const decisionsService = {
     const requiredApprovals = input.requiredApprovals ?? Math.max(1, activePanelSize);
 
     const decision = await decisionsRepository.create({
-      caseId: input.caseId,
-      outcome: input.outcome,
-      description: input.description,
-      ...(input.remarks ? { remarks: input.remarks } : {}),
+      caseId:       input.caseId,
+      decisionType: input.decisionType,
+      outcome:      input.outcome,
+      description:  input.description,
+      ...(input.remarks      ? { remarks:      input.remarks }      : {}),
       ...(input.decisionDate ? { decisionDate: input.decisionDate } : {}),
       requiredApprovals,
     });
