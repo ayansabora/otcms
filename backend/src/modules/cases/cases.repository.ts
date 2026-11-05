@@ -22,6 +22,7 @@ export const casesRepository = {
   create(data: {
     caseNumber: string;
     caseType: $Enums.CaseType;
+    title?: string;
     description: string;
     location?: string;
     jurisdictionBasis?: string;
@@ -34,14 +35,15 @@ export const casesRepository = {
     if (data.submittedByUserId !== undefined) historyCreate.actorUserId = data.submittedByUserId;
 
     const createData: Prisma.CaseCreateInput = {
-      caseNumber:            data.caseNumber,
-      caseType:              data.caseType,
-      description:           data.description,
-      priority:              data.priority,
-      minWitnessesRequired:  data.minWitnessesRequired,
-      parties:               { create: data.parties },
-      history:               { create: historyCreate },
+      caseNumber:           data.caseNumber,
+      caseType:             data.caseType,
+      description:          data.description,
+      priority:             data.priority,
+      minWitnessesRequired: data.minWitnessesRequired,
+      parties:              { create: data.parties },
+      history:              { create: historyCreate },
     };
+    if (data.title             !== undefined) (createData as Record<string,unknown>).title             = data.title;
     if (data.location          !== undefined) createData.location          = data.location;
     if (data.jurisdictionBasis !== undefined) createData.jurisdictionBasis = data.jurisdictionBasis;
     if (data.submittedByUserId !== undefined) createData.submittedByUserId = data.submittedByUserId;
@@ -88,6 +90,7 @@ export const casesRepository = {
   addWitness(data: {
     caseId: string;
     witnessId: string;
+    relationshipToCase?: string;
     testimonySummary?: string;
     communityMemberId?: string;
   }) {
@@ -95,14 +98,17 @@ export const casesRepository = {
       case:    { connect: { id: data.caseId } },
       witness: { connect: { id: data.witnessId } },
     };
-    if (data.testimonySummary  !== undefined) { witnessData.testimonySummary = data.testimonySummary; witnessData.testifiedAt = new Date(); }
-    if (data.communityMemberId !== undefined) witnessData.communityMember = { connect: { id: data.communityMemberId } };
+    if (data.relationshipToCase !== undefined) (witnessData as Record<string,unknown>).relationshipToCase = data.relationshipToCase;
+    if (data.testimonySummary   !== undefined) { witnessData.testimonySummary = data.testimonySummary; witnessData.testifiedAt = new Date(); }
+    if (data.communityMemberId  !== undefined) witnessData.communityMember = { connect: { id: data.communityMemberId } };
     return prisma.caseWitness.create({ data: witnessData });
   },
 
-  createWitness(data: { fullName: string; phone?: string; communityMemberId?: string }) {
+  createWitness(data: { fullName: string; sex?: string; age?: number; phone?: string; communityMemberId?: string }) {
     const d: Prisma.WitnessCreateInput = { fullName: data.fullName };
-    if (data.phone            !== undefined) d.phone            = data.phone;
+    if (data.sex               !== undefined) (d as Record<string,unknown>).sex = data.sex;
+    if (data.age               !== undefined) (d as Record<string,unknown>).age = data.age;
+    if (data.phone             !== undefined) d.phone             = data.phone;
     if (data.communityMemberId !== undefined) d.communityMemberId = data.communityMemberId;
     return prisma.witness.create({ data: d });
   },

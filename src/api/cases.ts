@@ -3,11 +3,20 @@ import type { Case, CaseHistoryEntry, CaseStatus, CaseType, PaginatedResult } fr
 
 export interface CreateCaseInput {
   caseType: CaseType;
+  title?: string;
   description: string;
   location?: string;
   priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
   jurisdictionBasis?: string;
   parties: { communityMemberId: string; roleInCase: "COMPLAINANT" | "RESPONDENT" }[];
+  witnesses?: {
+    fullName: string;
+    sex?: string;
+    age?: number;
+    phone?: string;
+    relationshipToCase?: string;
+    testimonySummary?: string;
+  }[];
 }
 
 export const casesApi = {

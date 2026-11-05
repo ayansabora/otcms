@@ -1,6 +1,11 @@
 import type { Request, Response } from "express";
 import { communityMembersService } from "./community-members.service.js";
-import { registerMemberSchema, verifyMemberSchema, listMembersQuerySchema } from "./community-members.validators.js";
+import {
+  registerMemberSchema,
+  updateMemberSchema,
+  verifyMemberSchema,
+  listMembersQuerySchema,
+} from "./community-members.validators.js";
 import { UnauthorizedError, ValidationError } from "../../utils/appError.js";
 
 function actorId(req: Request): string {
@@ -19,6 +24,12 @@ export const communityMembersController = {
     const input = registerMemberSchema.parse(req.body);
     const member = await communityMembersService.register(input, actorId(req));
     res.status(201).json({ member });
+  },
+
+  async update(req: Request, res: Response) {
+    const input = updateMemberSchema.parse(req.body);
+    const member = await communityMembersService.update(requireParamId(req), input, actorId(req));
+    res.status(200).json({ member });
   },
 
   async get(req: Request, res: Response) {

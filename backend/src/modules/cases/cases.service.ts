@@ -67,15 +67,23 @@ export const casesService = {
 
     const createdCase = await casesRepository.create({
       caseNumber,
-      caseType: input.caseType,
+      caseType:   input.caseType,
       description: input.description,
-      ...(input.location         ? { location:         input.location }         : {}),
-      ...(input.jurisdictionBasis? { jurisdictionBasis: input.jurisdictionBasis }: {}),
+      ...(input.title             ? { title:             input.title }             : {}),
+      ...(input.location          ? { location:          input.location }          : {}),
+      ...(input.jurisdictionBasis ? { jurisdictionBasis: input.jurisdictionBasis } : {}),
       priority: input.priority,
       minWitnessesRequired,
       submittedByUserId: caller.userId,
       parties: input.parties,
     });
+
+    // Bulk-create any witnesses provided at registration time
+    if (input.witnesses && input.witnesses.length > 0) {
+      for (const w of input.witnesses) {
+        await casesService.addWitness(createdCase.id, w, caller);
+      }
+    }
 
     await recordAudit({
       actorUserId: caller.userId,
@@ -212,27 +220,28 @@ export const casesService = {
     const caseRecord = await casesRepository.findById(id);
     if (!caseRecord) throw new NotFoundError("Case not found");
 
-    const witnessData: { fullName: string; phone?: string; communityMemberId?: string } = {
+    const witness = await casesRepository.createWitness({
       fullName: input.fullName,
-    };
-    if (input.phone) witnessData.phone = input.phone;
-    if (input.communityMemberId) witnessData.communityMemberId = input.communityMemberId;
-    const witness = await casesRepository.createWitness(witnessData);
+      ...(input.sex              !== undefined ? { sex:              input.sex }              : {}),
+      ...(input.age              !== undefined ? { age:              input.age }              : {}),
+      ...(input.phone            !== undefined ? { phone:            input.phone }            : {}),
+      ...(input.communityMemberId !== undefined ? { communityMemberId: input.communityMemberId } : {}),
+    });
 
-    const linkData: { caseId: string; witnessId: string; testimonySummary?: string; communityMemberId?: string } = {
-      caseId: id,
+    const link = await casesRepository.addWitness({
+      caseId:    id,
       witnessId: witness.id,
-    };
-    if (input.testimonySummary) linkData.testimonySummary = input.testimonySummary;
-    if (input.communityMemberId) linkData.communityMemberId = input.communityMemberId;
-    const link = await casesRepository.addWitness(linkData);
+      ...(input.relationshipToCase !== undefined ? { relationshipToCase: input.relationshipToCase } : {}),
+      ...(input.testimonySummary   !== undefined ? { testimonySummary:   input.testimonySummary }   : {}),
+      ...(input.communityMemberId  !== undefined ? { communityMemberId:  input.communityMemberId }  : {}),
+    });
 
     await recordAudit({
       actorUserId: caller.userId,
-      action: "case.witness_added",
-      entityType: "case",
-      entityId: id,
-      after: { witnessName: input.fullName },
+      action:      "case.witness_added",
+      entityType:  "case",
+      entityId:    id,
+      after:       { witnessName: input.fullName },
     });
 
     return link;

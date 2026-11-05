@@ -151,7 +151,11 @@ model CommunityMember {
   dateOfBirth        DateTime?                  @map("date_of_birth")
   phone              String?                    @db.VarChar(32)
   address            String?                    @db.VarChar(255)
+  region             String?                    @db.VarChar(128)
+  zone               String?                    @db.VarChar(128)
+  woreda             String?                    @db.VarChar(128)
   kebele             String?                    @db.VarChar(128)
+  occupation         String?                    @db.VarChar(128)
   identificationRef  String?                    @map("identification_ref") @db.VarChar(128)
   verificationStatus MemberVerificationStatus   @default(PENDING) @map("verification_status")
   verifiedByUserId   String?                    @map("verified_by_user_id")
@@ -182,7 +186,8 @@ enum MemberVerificationStatus {
 
 model Case {
   id           String     @id @default(uuid(7))
-  caseNumber   String     @unique @map("case_number") @db.VarChar(64) // default format OTCMS-{year}-{seq}; see blueprint §26
+  caseNumber   String     @unique @map("case_number") @db.VarChar(64)
+  title        String?    @db.VarChar(255)
   caseType     CaseType   @map("case_type")
   status       CaseStatus @default(SUBMITTED)
   priority     CasePriority @default(NORMAL)
@@ -272,8 +277,10 @@ enum CasePartyRole {
 model Witness {
   id                String   @id @default(uuid(7))
   fullName          String   @map("full_name") @db.VarChar(255)
+  sex               String?  @db.VarChar(16)
+  age               Int?
   phone             String?  @db.VarChar(32)
-  communityMemberId String?  @map("community_member_id") // optional link if witness is also a registered member
+  communityMemberId String?  @map("community_member_id")
   createdAt         DateTime @default(now()) @map("created_at")
 
   caseWitnesses CaseWitness[]
@@ -285,6 +292,7 @@ model CaseWitness {
   id                String   @id @default(uuid(7))
   caseId            String   @map("case_id")
   witnessId         String   @map("witness_id")
+  relationshipToCase String? @map("relationship_to_case") @db.VarChar(255)
   testimonySummary  String?  @map("testimony_summary") @db.Text
   testifiedAt       DateTime? @map("testified_at")
   communityMemberId String?  @map("community_member_id")

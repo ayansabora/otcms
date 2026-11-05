@@ -44,7 +44,11 @@ export interface CommunityMember {
   dateOfBirth?: string | null;
   phone?: string | null;
   address?: string | null;
+  region?: string | null;
+  zone?: string | null;
+  woreda?: string | null;
   kebele?: string | null;
+  occupation?: string | null;
   identificationRef?: string | null;
   verificationStatus: "PENDING" | "VERIFIED" | "REJECTED";
   createdAt: string;
@@ -77,6 +81,7 @@ export interface CaseWitness {
 export interface Case {
   id: string;
   caseNumber: string;
+  title?: string | null;
   caseType: CaseType;
   status: CaseStatus;
   priority: CasePriority;
