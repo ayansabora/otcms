@@ -1,6 +1,7 @@
 import { casesRepository } from "./cases.repository.js";
 import { communityMembersRepository } from "../community-members/community-members.repository.js";
 import { notify } from "../notifications/notifications.service.js";
+import { prisma } from "../../database/prismaClient.js";
 import {
   assertValidTransition,
   permissionsRequiredFor,
@@ -93,6 +94,27 @@ export const casesService = {
       after: { caseNumber, caseType: input.caseType },
     });
 
+    // ── Inter-actor notification: notify all Court Managers that a new case
+    // is ready for their review. Court Managers have case:view_assigned or
+    // case:transition permission — we look up users with the COURT_MANAGER role.
+    const courtManagers = await prisma.user.findMany({
+      where: {
+        status: "ACTIVE",
+        archivedAt: null,
+        roles: { some: { role: { name: "COURT_MANAGER" } } },
+      },
+      select: { id: true },
+    });
+    for (const cm of courtManagers) {
+      await notify({
+        userId: cm.id,
+        type: "case_created_for_review",
+        title: `New case ready for review: ${caseNumber}`,
+        body: `Case type: ${input.caseType.replace(/_/g, " ")}. A Record Officer has registered a new case awaiting your review.`,
+        data: { caseId: createdCase.id, caseNumber },
+      });
+    }
+
     return { case: createdCase, duplicateWarning };
   },
 
@@ -181,9 +203,50 @@ export const casesService = {
         userId: caseRecord.submittedByUserId,
         type: "case_status_changed",
         title: `Case ${caseRecord.caseNumber} status updated`,
-        body: `Status changed from ${from} to ${to}.`,
+        body: input.note
+          ? `Status changed from ${from.replace(/_/g, " ")} to ${to.replace(/_/g, " ")}. Note: ${input.note}`
+          : `Status changed from ${from.replace(/_/g, " ")} to ${to.replace(/_/g, " ")}.`,
         data: { caseId: id, from, to },
       });
+    }
+
+    // ── Inter-actor notification: when a case is returned/rejected, notify
+    // all Record Officers so they can correct and resubmit.
+    if (to === "REJECTED" || to === "WITHDRAWN") {
+      const recordOfficers = await prisma.user.findMany({
+        where: {
+          status: "ACTIVE",
+          archivedAt: null,
+          roles: { some: { role: { name: "RECORD_OFFICER" } } },
+        },
+        select: { id: true },
+      });
+      for (const ro of recordOfficers) {
+        if (ro.id !== caseRecord.submittedByUserId) {
+          await notify({
+            userId: ro.id,
+            type: "case_returned",
+            title: `Case ${caseRecord.caseNumber} ${to === "REJECTED" ? "rejected" : "withdrawn"}`,
+            body: input.note
+              ? `Court Manager note: ${input.note}`
+              : `Case ${caseRecord.caseNumber} has been ${to === "REJECTED" ? "rejected" : "withdrawn"}.`,
+            data: { caseId: id, from, to },
+          });
+        }
+      }
+    }
+
+    // ── Notify community member parties who have user accounts
+    for (const party of caseRecord.parties) {
+      if (party.communityMember.userId) {
+        await notify({
+          userId: party.communityMember.userId,
+          type: "case_status_changed",
+          title: `Update on case ${caseRecord.caseNumber}`,
+          body: `The status of your case has changed to ${to.replace(/_/g, " ")}.`,
+          data: { caseId: id, from, to },
+        });
+      }
     }
 
     return updated;
@@ -212,6 +275,17 @@ export const casesService = {
       entityId: id,
       after: { userIds: input.userIds, leadUserId: input.leadUserId },
     });
+
+    // ── Notify assigned elders that they have been assigned to a case
+    for (const userId of input.userIds) {
+      await notify({
+        userId,
+        type: "case_panel_assigned",
+        title: `You have been assigned to case ${caseRecord.caseNumber}`,
+        body: `You have been assigned as ${userId === input.leadUserId ? "Lead Elder" : "Panel Member"} for case ${caseRecord.caseNumber}.`,
+        data: { caseId: id },
+      });
+    }
 
     return casesRepository.findById(id);
   },

@@ -1,8 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Scale, Calendar, Clock, CheckCircle, Users, TrendingUp, ArrowRight, ChevronRight } from "lucide-react";import { casesApi } from "../api/cases";
+import {
+  Scale, Calendar, Clock, CheckCircle,
+  ArrowRight, ChevronRight, FileText, Bell, TrendingUp,
+} from "lucide-react";
+import { casesApi } from "../api/cases";
 import { reportsApi } from "../api/reports";
 import { hearingsApi } from "../api/hearings";
+import { notificationsApi } from "../api/notifications";
 import { useAuth } from "../auth/AuthContext";
 import { StatusBadge, PriorityBadge } from "../components/StatusBadge";
 import { Card, CardHeader, CardBody } from "../components/Card";
@@ -46,7 +51,7 @@ function StatCard({ label, value, icon, trend, to, accentColor = "var(--color-pr
   return <div className="relative">{inner}</div>;
 }
 
-/* ── Horizontal bar chart ───────────────────────────────────────────────── */
+/* ── Bar chart ──────────────────────────────────────────────────────────── */
 function BarChart({ data, labelKey, valueKey, color = "var(--color-primary)" }: {
   data: Record<string, unknown>[];
   labelKey: string;
@@ -64,10 +69,7 @@ function BarChart({ data, labelKey, valueKey, color = "var(--color-primary)" }: 
           <div key={i} className="flex items-center gap-3">
             <span className="text-xs text-[var(--color-muted)] w-36 shrink-0 truncate capitalize">{label.toLowerCase()}</span>
             <div className="flex-1 h-2 bg-[var(--color-bg)] rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${pct}%`, backgroundColor: color }}
-              />
+              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
             </div>
             <span className="text-xs font-semibold text-[var(--color-ink)] w-8 text-right">{value}</span>
           </div>
@@ -77,9 +79,19 @@ function BarChart({ data, labelKey, valueKey, color = "var(--color-primary)" }: 
   );
 }
 
-/* ── Dashboard Page ─────────────────────────────────────────────────────── */
+/* ── Main Dashboard ─────────────────────────────────────────────────────── */
 export function DashboardPage() {
   const { user } = useAuth();
+
+  // Determine role context
+  const isCommunityMember = user?.permissions.includes("case:view_own") &&
+    !user?.permissions.includes("case:view_all") &&
+    !user?.permissions.includes("case:view_assigned");
+  const isRecordOfficer = user?.permissions.includes("case:create");
+  const isCourtManager = user?.permissions.includes("case:view_assigned") &&
+    !user?.permissions.includes("case:view_all");
+  const isAdmin = user?.permissions.includes("user:manage");
+
   const canViewReports = user?.permissions.includes("report:generate");
   const canViewHearings = user?.permissions.some((p) =>
     ["case:view_all", "case:view_assigned", "hearing:manage"].includes(p),
@@ -108,9 +120,14 @@ export function DashboardPage() {
     enabled: canViewHearings ?? false,
   });
 
+  const { data: unreadNotifications } = useQuery({
+    queryKey: ["notifications", "dashboard-unread"],
+    queryFn: () => notificationsApi.list({ pageSize: 1, unreadOnly: true }),
+  });
+
+  // Derive stats from reports
   const statusRows = (statusReport?.rows ?? []) as CasesByStatusRow[];
   const typeRows   = (typeReport?.rows ?? []) as CasesByTypeRow[];
-
   const totalCases   = statusRows.reduce((s, r) => s + r.count, 0);
   const pendingCases = statusRows.filter((r) => ["SUBMITTED","UNDER_REVIEW","VERIFIED","ASSIGNED"].includes(r.status)).reduce((s, r) => s + r.count, 0);
   const activeCases  = statusRows.filter((r) => ["HEARING_SCHEDULED","HEARING_IN_PROGRESS","DECISION_PENDING"].includes(r.status)).reduce((s, r) => s + r.count, 0);
@@ -118,6 +135,7 @@ export function DashboardPage() {
 
   const today = new Date().toDateString();
   const todayHearings = upcomingHearings?.items.filter((h) => new Date(h.startTime).toDateString() === today) ?? [];
+  const unreadCount = unreadNotifications?.total ?? 0;
 
   const greeting = (() => {
     const hr = new Date().getHours();
@@ -126,18 +144,118 @@ export function DashboardPage() {
     return "Good evening";
   })();
 
+  /* ════════════════════════════════════════════════════════════════════════
+     COMMUNITY MEMBER DASHBOARD
+  ════════════════════════════════════════════════════════════════════════ */
+  if (isCommunityMember) {
+    return (
+      <div className="max-w-5xl space-y-6">
+        {/* Welcome */}
+        <div className="relative bg-[var(--color-primary-dark)] rounded-xl px-6 py-5 overflow-hidden">
+          <div className="absolute inset-0 gadaa-pattern opacity-20" />
+          <div className="relative">
+            <p className="text-white/60 text-sm font-medium mb-0.5">{greeting},</p>
+            <h1 className="font-display text-2xl text-white font-semibold leading-tight">{user?.fullName || "Community Member"}</h1>
+            <p className="text-white/50 text-sm mt-1">Oromo Traditional Court — Bale Robe City</p>
+          </div>
+        </div>
+
+        {/* Quick actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Link to="/app/case-request" className="block">
+            <div className="bg-[var(--color-surface)] border border-[var(--color-line)] rounded-xl p-5 hover:shadow-md transition-shadow">
+              <div className="w-10 h-10 rounded-lg bg-[var(--color-primary-subtle)] flex items-center justify-center mb-3">
+                <FileText size={20} className="text-[var(--color-primary)]" />
+              </div>
+              <p className="font-semibold text-sm text-[var(--color-ink)] mb-1">Submit Case Request</p>
+              <p className="text-xs text-[var(--color-muted)]">Request court assistance for a dispute</p>
+            </div>
+          </Link>
+          <Link to="/app/my-cases" className="block">
+            <div className="bg-[var(--color-surface)] border border-[var(--color-line)] rounded-xl p-5 hover:shadow-md transition-shadow">
+              <div className="w-10 h-10 rounded-lg bg-[var(--color-info-bg)] flex items-center justify-center mb-3">
+                <Scale size={20} className="text-[var(--color-info)]" />
+              </div>
+              <p className="font-semibold text-sm text-[var(--color-ink)] mb-1">My Cases</p>
+              <p className="text-xs text-[var(--color-muted)]">View cases you are involved in</p>
+            </div>
+          </Link>
+          <Link to="/app/notifications" className="block">
+            <div className="bg-[var(--color-surface)] border border-[var(--color-line)] rounded-xl p-5 hover:shadow-md transition-shadow">
+              <div className="w-10 h-10 rounded-lg bg-[var(--color-warning-bg)] flex items-center justify-center mb-3">
+                <Bell size={20} className="text-[var(--color-warning)]" />
+              </div>
+              <p className="font-semibold text-sm text-[var(--color-ink)] mb-1">Notifications</p>
+              <p className="text-xs text-[var(--color-muted)]">{unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}</p>
+            </div>
+          </Link>
+        </div>
+
+        {/* My cases summary */}
+        <Card>
+          <CardHeader title="My Cases" icon={<Scale />} action={<Link to="/app/my-cases"><Button variant="ghost" size="sm" rightIcon={<ArrowRight size={14} />}>View all</Button></Link>} />
+          {casesLoading ? (
+            <SkeletonTable rows={4} cols={3} />
+          ) : !recentCases?.items.length ? (
+            <EmptyState icon={<Scale />} title="No cases yet" description="You are not listed as a party in any case. Submit a case request to get started." action={<Link to="/app/case-request"><Button size="sm">Submit Case Request</Button></Link>} />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[10px] text-[var(--color-muted)] uppercase tracking-wide bg-[var(--color-bg)] border-b border-[var(--color-line)]">
+                    <th className="px-5 py-3 font-semibold">Case No.</th>
+                    <th className="px-5 py-3 font-semibold">Type</th>
+                    <th className="px-5 py-3 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentCases.items.slice(0, 5).map((c) => (
+                    <tr key={c.id} className="border-t border-[var(--color-line)] hover:bg-[var(--color-bg)]">
+                      <td className="px-5 py-3.5">
+                        <Link to={`/app/cases/${c.id}`} className="font-semibold text-[var(--color-primary)] hover:underline">{c.caseNumber}</Link>
+                      </td>
+                      <td className="px-5 py-3.5 text-[var(--color-muted)] text-xs capitalize">{c.caseType.replace(/_/g, " ").toLowerCase()}</td>
+                      <td className="px-5 py-3.5"><StatusBadge status={c.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        {/* Recent notifications */}
+        <Card>
+          <CardHeader title="Recent Notifications" icon={<Bell />} action={<Link to="/app/notifications"><Button variant="ghost" size="sm">All</Button></Link>} />
+          <CardBody>
+            {unreadCount === 0 ? (
+              <p className="text-sm text-[var(--color-muted)]">No new notifications.</p>
+            ) : (
+              <p className="text-sm text-[var(--color-ink)]">You have <strong>{unreadCount}</strong> unread notification{unreadCount !== 1 ? "s" : ""}.</p>
+            )}
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     STAFF DASHBOARD (Admin, Court Manager, Record Officer)
+  ════════════════════════════════════════════════════════════════════════ */
+  const roleLabel = isAdmin ? "System Administrator" : isCourtManager ? "Court Manager" : isRecordOfficer ? "Record Officer" : "";
+
   return (
     <div className="max-w-7xl space-y-6">
-      {/* Welcome header with subtle gadaa pattern */}
+      {/* Welcome header */}
       <div className="relative bg-[var(--color-primary-dark)] rounded-xl px-6 py-5 overflow-hidden">
         <div className="absolute inset-0 gadaa-pattern opacity-20" />
         <div className="absolute right-0 top-0 bottom-0 w-48 bg-gradient-to-l from-[var(--color-gold)]/10 to-transparent" />
         <div className="relative">
           <p className="text-white/60 text-sm font-medium mb-0.5">{greeting},</p>
-          <h1 className="font-display text-2xl text-white font-semibold leading-tight">
-            {user?.fullName || "Welcome"}
-          </h1>
-          <p className="text-white/50 text-sm mt-1">Oromo Traditional Court Management System — Bale Robe City</p>
+          <h1 className="font-display text-2xl text-white font-semibold leading-tight">{user?.fullName || "Welcome"}</h1>
+          <p className="text-white/50 text-sm mt-1">
+            {roleLabel} · Oromo Traditional Court — Bale Robe City
+          </p>
         </div>
       </div>
 
@@ -145,40 +263,27 @@ export function DashboardPage() {
       {canViewReports ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Total Cases"       value={statsLoading ? "—" : totalCases}   icon={<Scale />}       to="/app/cases"                             loading={statsLoading} />
-          <StatCard label="Pending / Review"  value={statsLoading ? "—" : pendingCases} icon={<Clock />}       to="/app/cases?status=SUBMITTED"            loading={statsLoading} accentColor="var(--color-warning)" />
-          <StatCard label="Active Hearings"   value={statsLoading ? "—" : activeCases}  icon={<Calendar />}    to="/app/cases?status=HEARING_SCHEDULED"    loading={statsLoading} accentColor="var(--color-info)" />
-          <StatCard label="Decided / Closed"  value={statsLoading ? "—" : closedCases}  icon={<CheckCircle />} to="/app/cases?status=CLOSED"              loading={statsLoading} accentColor="var(--color-success)" />
+          <StatCard label="Pending / Review"   value={statsLoading ? "—" : pendingCases} icon={<Clock />}       to="/app/cases?status=SUBMITTED"            loading={statsLoading} accentColor="var(--color-warning)" />
+          <StatCard label="Active Hearings"    value={statsLoading ? "—" : activeCases}  icon={<Calendar />}    to="/app/cases?status=HEARING_SCHEDULED"    loading={statsLoading} accentColor="var(--color-info)" />
+          <StatCard label="Decided / Closed"   value={statsLoading ? "—" : closedCases}  icon={<CheckCircle />} to="/app/cases?status=CLOSED"               loading={statsLoading} accentColor="var(--color-success)" />
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <StatCard label="Cases" value={recentCases?.total ?? "—"} icon={<Scale />} to="/app/cases" loading={casesLoading} />
-          <StatCard label="Community Members" value="—" icon={<Users />} to="/app/members" accentColor="var(--color-info)" />
+          <StatCard label="Unread Notifications" value={unreadCount} icon={<Bell />} to="/app/notifications" accentColor="var(--color-warning)" />
         </div>
       )}
 
       {/* Main content grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent cases — 2/3 width */}
+        {/* Recent cases */}
         <div className="lg:col-span-2">
           <Card>
-            <CardHeader
-              title="Recent Cases"
-              icon={<Scale />}
-              action={
-                <Link to="/app/cases">
-                  <Button variant="ghost" size="sm" rightIcon={<ArrowRight size={14} />}>View all</Button>
-                </Link>
-              }
-            />
+            <CardHeader title="Recent Cases" icon={<Scale />} action={<Link to="/app/cases"><Button variant="ghost" size="sm" rightIcon={<ArrowRight size={14} />}>View all</Button></Link>} />
             {casesLoading ? (
               <SkeletonTable rows={5} cols={4} />
             ) : !recentCases?.items.length ? (
-              <EmptyState
-                icon={<Scale />}
-                title="No cases yet"
-                description="Register the first case to get started."
-                action={<Link to="/app/cases/new"><Button size="sm">Register Case</Button></Link>}
-              />
+              <EmptyState icon={<Scale />} title="No cases yet" description="Register the first case to get started." action={isRecordOfficer ? <Link to="/app/cases/new"><Button size="sm">Register Case</Button></Link> : undefined} />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -192,12 +297,8 @@ export function DashboardPage() {
                   </thead>
                   <tbody>
                     {recentCases.items.map((c) => (
-                      <tr key={c.id} className="border-t border-[var(--color-line)] hover:bg-[var(--color-bg)] transition-colors">
-                        <td className="px-5 py-3.5">
-                          <Link to={`/app/cases/${c.id}`} className="font-semibold text-[var(--color-primary)] hover:underline">
-                            {c.caseNumber}
-                          </Link>
-                        </td>
+                      <tr key={c.id} className="border-t border-[var(--color-line)] hover:bg-[var(--color-bg)]">
+                        <td className="px-5 py-3.5"><Link to={`/app/cases/${c.id}`} className="font-semibold text-[var(--color-primary)] hover:underline">{c.caseNumber}</Link></td>
                         <td className="px-5 py-3.5 text-[var(--color-muted)] text-xs capitalize">{c.caseType.replace(/_/g, " ").toLowerCase()}</td>
                         <td className="px-5 py-3.5"><PriorityBadge priority={c.priority} /></td>
                         <td className="px-5 py-3.5"><StatusBadge status={c.status} /></td>
@@ -215,12 +316,7 @@ export function DashboardPage() {
           {/* Today's hearings */}
           {canViewHearings && (
             <Card>
-              <CardHeader
-                title="Today's Hearings"
-                icon={<Calendar />}
-                subtitle={todayHearings.length ? `${todayHearings.length} scheduled` : "None today"}
-                action={<Link to="/app/hearings"><Button variant="ghost" size="sm">All</Button></Link>}
-              />
+              <CardHeader title="Today's Hearings" icon={<Calendar />} subtitle={todayHearings.length ? `${todayHearings.length} scheduled` : "None today"} action={<Link to="/app/hearings"><Button variant="ghost" size="sm">All</Button></Link>} />
               {hearingsLoading ? (
                 <CardBody><div className="space-y-3"><Skeleton className="h-14" /><Skeleton className="h-14" /></div></CardBody>
               ) : todayHearings.length === 0 ? (
@@ -250,12 +346,7 @@ export function DashboardPage() {
             <Card>
               <CardHeader title="Cases by Type" icon={<TrendingUp />} />
               <CardBody>
-                <BarChart
-                  data={typeRows as unknown as Record<string, unknown>[]}
-                  labelKey="caseType"
-                  valueKey="count"
-                  color="var(--color-gold)"
-                />
+                <BarChart data={typeRows as unknown as Record<string, unknown>[]} labelKey="caseType" valueKey="count" color="var(--color-gold)" />
               </CardBody>
             </Card>
           )}
@@ -267,11 +358,7 @@ export function DashboardPage() {
         <Card>
           <CardHeader title="Cases by Status" icon={<Scale />} />
           <CardBody>
-            <BarChart
-              data={statusRows as unknown as Record<string, unknown>[]}
-              labelKey="status"
-              valueKey="count"
-            />
+            <BarChart data={statusRows as unknown as Record<string, unknown>[]} labelKey="status" valueKey="count" />
           </CardBody>
         </Card>
       )}
