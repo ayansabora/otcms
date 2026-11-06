@@ -133,9 +133,16 @@ function MemberSelector({
       />
 
       {error ? (
-        <div className="flex items-center justify-between rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger-bg)] px-4 py-3">
-          <p className="text-sm text-[var(--color-danger)]">Could not load members. Check the backend is running.</p>
-          <Button variant="ghost" size="sm" onClick={onRetry} className="text-[var(--color-danger)] ml-3 shrink-0">Retry</Button>
+        <div className="rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger-bg)] px-4 py-3.5 space-y-2">
+          <p className="text-sm font-semibold text-[var(--color-danger)]">Could not load community members</p>
+          <p className="text-xs text-[var(--color-danger)]/80 leading-relaxed">
+            Possible causes:
+            <br />• The backend server is not running — start it with <code className="font-mono bg-[var(--color-danger)]/10 px-1 rounded">npm run dev</code> in the <code className="font-mono bg-[var(--color-danger)]/10 px-1 rounded">backend/</code> folder.
+            <br />• Your session has expired — try logging out and back in.
+          </p>
+          <Button variant="ghost" size="sm" onClick={onRetry} className="text-[var(--color-danger)]">
+            Try Again
+          </Button>
         </div>
       ) : (
         <Select
