@@ -57,6 +57,15 @@ import { RoleManagementPage } from "./pages/admin/RoleManagementPage";
 // Roles & Permissions (Admin)
 import { PermissionsPage } from "./pages/admin/PermissionsPage";
 
+// Community Member pages
+import { MyCasesPage } from "./pages/my-cases/MyCasesPage";
+import { SubmitCaseRequestPage } from "./pages/case-request/SubmitCaseRequestPage";
+
+// Record Officer management sub-pages
+import { PlaintiffsPage } from "./pages/parties/PlaintiffsPage";
+import { DefendantsPage } from "./pages/parties/DefendantsPage";
+import { WitnessesPage } from "./pages/parties/WitnessesPage";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -133,6 +142,15 @@ function App() {
 
               {/* Roles & Permissions (Admin) */}
               <Route path="permissions" element={<PermissionsPage />} />
+
+              {/* Community Member pages */}
+              <Route path="my-cases" element={<MyCasesPage />} />
+              <Route path="case-request" element={<SubmitCaseRequestPage />} />
+
+              {/* Record Officer party management */}
+              <Route path="plaintiffs" element={<PlaintiffsPage />} />
+              <Route path="defendants" element={<DefendantsPage />} />
+              <Route path="witnesses" element={<WitnessesPage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/app" replace />} />

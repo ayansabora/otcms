@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Scale, Calendar, ScrollText, Users, FolderOpen,
   BarChart3, ShieldCheck, Bell, Menu, X, LogOut,
   ChevronDown, ChevronRight, User, KeyRound, Settings, FilePlus,
-  FileSearch, FileEdit, Upload, Eye, UserCog, History,
+  FileSearch, FileEdit, Upload, Eye, UserCog, History, UserPlus,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { notificationsApi } from "../api/notifications";
@@ -56,7 +56,7 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "group",
     id: "cases",
-    label: "Case Management",
+    label: "Requester Management",
     icon: <Scale size={16} />,
     children: [
       {
@@ -79,6 +79,61 @@ const NAV_CONFIG: NavEntry[] = [
         label: "Assigned Cases",
         icon: <FileEdit size={15} />,
         permission: "case:view_assigned",
+      },
+    ],
+  },
+
+  // ── Party Management (Record Officer) ────────────────────────────────────
+  {
+    kind: "group",
+    id: "party-management",
+    label: "Party Management",
+    icon: <Users size={16} />,
+    children: [
+      {
+        kind: "leaf",
+        to: "/app/plaintiffs",
+        label: "Plaintiffs",
+        icon: <Users size={15} />,
+        permission: "case:view_all",
+      },
+      {
+        kind: "leaf",
+        to: "/app/defendants",
+        label: "Defendants",
+        icon: <Users size={15} />,
+        permission: "case:view_all",
+      },
+      {
+        kind: "leaf",
+        to: "/app/witnesses",
+        label: "Witnesses",
+        icon: <UserPlus size={15} />,
+        permission: "case:view_all",
+      },
+    ],
+  },
+
+  // ── My Cases (Community Member) ──────────────────────────────────────────
+  {
+    kind: "group",
+    id: "my-cases-group",
+    label: "My Cases",
+    icon: <Scale size={16} />,
+    children: [
+      {
+        kind: "leaf",
+        to: "/app/my-cases",
+        label: "My Cases",
+        icon: <FileSearch size={15} />,
+        permission: "case:view_own",
+      },
+      {
+        kind: "leaf",
+        to: "/app/case-request",
+        label: "Submit Case Request",
+        icon: <FilePlus size={15} />,
+        permission: "case:view_own",
       },
     ],
   },
