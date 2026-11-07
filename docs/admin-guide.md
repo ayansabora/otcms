@@ -1,621 +1,503 @@
 # OTCMS — System Administrator Guide
 
-**Oromo Traditional Court Management System**
-Bale Robe City · Oromia, Ethiopia
+**Oromo Traditional Court Management System**  
+Bale Robe City · Oromia, Ethiopia  
+Version 1.1 — Updated October 2026
 
 ---
 
 ## Table of Contents
 
-1. [Overview](#1-overview)
-2. [Getting Started](#2-getting-started)
-3. [Dashboard](#3-dashboard)
-4. [User Management](#4-user-management)
-5. [Role Management](#5-role-management)
-6. [Case Management](#6-case-management)
-7. [Community Members](#7-community-members)
-8. [Hearings](#8-hearings)
-9. [Decisions](#9-decisions)
-10. [Documents](#10-documents)
-11. [Notifications](#11-notifications)
-12. [Reports](#12-reports)
-13. [Audit Logs](#13-audit-logs)
-14. [System Settings](#14-system-settings)
-15. [Security Rules](#15-security-rules)
-16. [Roles and Permissions Reference](#16-roles-and-permissions-reference)
-17. [Troubleshooting](#17-troubleshooting)
+1. [System Overview](#1-system-overview)
+2. [Quick Start](#2-quick-start)
+3. [Four Actors](#3-four-actors)
+4. [Dashboard](#4-dashboard)
+5. [User Management](#5-user-management)
+6. [Role Management](#6-role-management)
+7. [Case Registration (Record Officer)](#7-case-registration-record-officer)
+8. [Community Member Management](#8-community-member-management)
+9. [Case Management](#9-case-management)
+10. [Hearings](#10-hearings)
+11. [Decisions](#11-decisions)
+12. [Summons](#12-summons)
+13. [Consent Records](#13-consent-records)
+14. [Appeals](#14-appeals)
+15. [Documents](#15-documents)
+16. [Notifications](#16-notifications)
+17. [Reports](#17-reports)
+18. [Audit Logs](#18-audit-logs)
+19. [System Settings](#19-system-settings)
+20. [Security Rules](#20-security-rules)
+21. [Permissions Reference](#21-permissions-reference)
+22. [Troubleshooting](#22-troubleshooting)
 
 ---
 
-## 1. Overview
+## 1. System Overview
 
-OTCMS is a digital case management platform for the Oromo Traditional
-Court in Bale Robe City. It supports the full court workflow from case
-registration through elder-panel assignment, hearings, decisions, and
-closure.
+OTCMS is a digital case management platform for the Oromo Traditional Court in Bale Robe City, supporting the full workflow from community member registration through case registration, elder-panel assignment, hearings, decisions, and closure — based on Proclamation No. 240/2021.
 
-Four roles are defined in the system:
+### Four actors
 
 | Role | Purpose |
 |---|---|
 | **ADMIN** | System Administrator — manages users, roles, and system configuration |
 | **COURT_MANAGER** | Oversees court operations, hearings, and decisions |
 | **RECORD_OFFICER** | Registers cases, community members, and documents |
-| **COMMUNITY_MEMBER** | Plaintiff or defendant — limited read-only access to own cases |
+| **COMMUNITY_MEMBER** | Plaintiff or defendant — limited access to own cases |
 
-All permissions are enforced by the backend API. Hiding a button in the
-UI does not grant or remove access — every request is independently
-authorized on the server.
+All permissions are enforced by the backend API. Hiding a button does not grant or remove access.
 
 ---
 
-## 2. Getting Started
+## 2. Quick Start
 
-### 2.1 Default admin account
-
-After the initial seed (`npm run seed` in `backend/`), the following
-demo account is created:
+### Default admin account
 
 | Field | Value |
 |---|---|
 | Email | `admin@otcms.local` |
-| Password | `ChangeMe12345!` (set via `SEED_ADMIN_PASSWORD` in `.env`) |
+| Password | `ChangeMe12345!` (from `.env` `SEED_ADMIN_PASSWORD`) |
 
-**Change this password immediately** after the first login using
-**Settings → Change Password**.
+**Change this password immediately** after first login via **Settings → Change Password**.
 
-### 2.2 Starting the application
+### Starting the application
+
+Both servers must run simultaneously in separate terminals:
 
 ```powershell
-# Backend (runs on port 4000)
-cd backend
+# Terminal 1 — Backend API (port 4000)
+cd C:\Users\hp\OTCMS\backend
 npm run dev
 
-# Frontend (runs on port 5173)
-cd ..        # project root
+# Terminal 2 — Frontend (port 5173)
+cd C:\Users\hp\OTCMS
 npm run dev
 ```
 
-Open `http://localhost:5173` in a browser.
+Open `http://localhost:5173`.
 
-### 2.3 Environment configuration
+> **Important:** If you see "Could not load community members" on the Register Case page, the backend is not running. Start it with `npm run dev` in the `backend/` folder.
 
-Key variables in `backend/.env`:
+### First-time database setup
 
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | MySQL connection string |
-| `JWT_ACCESS_SECRET` | Sign access tokens — use a long random value in production |
-| `JWT_REFRESH_SECRET` | Sign refresh tokens — different from the access secret |
-| `JWT_ACCESS_TTL` | Access token lifetime (default `15m`) |
-| `JWT_REFRESH_TTL` | Refresh token lifetime (default `7d`) |
-| `RATE_LIMIT_WINDOW_MS` | Rate-limit window in milliseconds |
-| `AUTH_RATE_LIMIT_MAX` | Max login attempts per window |
-| `LOGIN_MAX_FAILED_ATTEMPTS` | Failed attempts before account lockout |
-| `LOGIN_LOCKOUT_MINUTES` | Lockout duration |
-| `SEED_ADMIN_PASSWORD` | Password used when seeding the demo admin account |
+```powershell
+# In MySQL as root:
+CREATE USER 'otcms'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY 'yourpassword';
+CREATE DATABASE otcms CHARACTER SET utf8mb4;
+GRANT ALL PRIVILEGES ON otcms.* TO 'otcms'@'127.0.0.1';
+FLUSH PRIVILEGES;
 
----
-
-## 3. Dashboard
-
-The dashboard is the first page after login. It shows:
-
-- **Stats cards** — total cases, pending cases, active hearings, decided/closed cases
-- **Recent cases table** — the latest 7 cases with case number, type, priority, and status
-- **Today's hearings** — hearings scheduled for today with time and location
-- **Charts** — cases by status and cases by type (visible to roles with `report:generate`)
-
-The dashboard content adapts to the logged-in user's permissions. A
-Community Member sees only their own case summary.
+# Then in backend/:
+npx prisma db push   # creates all tables
+npm run seed         # seeds roles, permissions, and admin account
+```
 
 ---
 
-## 4. User Management
+## 3. Four Actors
 
-Navigate to **Administration → User Management** in the sidebar.
+### Actor 1 — System Administrator (ADMIN)
 
-> Requires: `user:manage` permission (ADMIN role only)
+**Dashboard:** Total/Pending/Active/Closed cases, recent cases, today's hearings.  
+**Sidebar:** Administration → User Management, Role Management, Audit Logs, System Settings.  
+**Cannot:** Modify court decisions; interfere with judicial proceedings.
 
-### 4.1 Viewing users
+### Actor 2 — Court Manager (COURT_MANAGER)
 
-The user table shows:
+**Dashboard:** Cases awaiting review, assigned cases, today's hearings, decisions.  
+**Sidebar:** Requester Management (Assigned Cases), Hearings (Schedule, View), Decisions (Record, View), Reports.  
+**Responsibilities:** Review cases, schedule hearings, record decisions, update case status.  
+**Cannot:** Manage system users or permissions.
 
-- **Name** and phone number
-- **Email**
-- **Role** (colour-coded badge)
-- **Status** — Active, Inactive, or Suspended
-- **Registered** date
-- **Last Login** date
+### Actor 3 — Record Officer (RECORD_OFFICER)
 
-Use the search bar to find users by name or email.
-Use the **All Roles** and **All Statuses** dropdowns to filter.
+**Dashboard:** Recent cases, register case button, today's hearings, reports.  
+**Sidebar:** Requester Management (Register Case, View All), Party Management (Plaintiffs, Defendants, Witnesses), Community Members, Documents, Reports.  
+**Responsibilities:** Register cases with multiple plaintiffs/defendants/witnesses, manage community member records, upload documents.  
+**Cannot:** Issue judicial decisions.
 
-### 4.2 Creating a user
+### Actor 4 — Community Member (COMMUNITY_MEMBER)
+
+**Dashboard:** Quick actions (Submit Request, My Cases, Notifications), my cases list.  
+**Sidebar:** My Cases (View, Submit Request), Notifications.  
+**Can access:** Own cases, permitted documents, notifications, own profile.  
+**Cannot:** View other citizens' case records or administrative functions.
+
+---
+
+## 4. Dashboard
+
+The dashboard adapts to the logged-in user's role:
+
+- **Community Member:** Quick-action cards, own cases summary, unread notification count.
+- **Staff (Admin/Court Manager/Record Officer):** Stats cards (Total/Pending/Active/Closed), recent cases table, today's hearings, bar charts (cases by type, by status).
+
+Charts only appear for users with `report:generate` permission.
+
+---
+
+## 5. User Management
+
+Navigate to **Administration → User Management**. Requires `user:manage` permission.
+
+### Creating a user
 
 1. Click **Create User**.
-2. Fill in Full Name (required), Email (required), Phone (optional).
-3. Select a Role.
-4. Optionally set a Temporary Password, or leave blank to auto-generate one.
-5. Click **Create User**.
+2. Enter full name (required), email (required), phone (optional).
+3. Select a role.
+4. Leave password blank to auto-generate, or set one (min 12 chars, letter + number).
+5. The temporary password is shown **once** — copy it and share in person.
 
-If the password was auto-generated, a one-time display shows it in the
-success screen. **Copy and share it in person** — it cannot be retrieved
-again after closing the modal.
+### Editing, role change, status, password reset
 
-Password policy (enforced on both frontend and backend):
-- Minimum 12 characters
-- At least one letter
-- At least one number
+Click the **⋮** menu on any user row:
 
-### 4.3 Editing a user
+| Action | Notes |
+|---|---|
+| **Edit Details** | Change name or phone |
+| **Change Role** | You cannot remove your own ADMIN role |
+| **Reset Password** | Revokes all active sessions |
+| **Deactivate** | Disabled if user is the last active admin |
 
-Click the **⋮** menu on any row → **Edit Details** to update the user's
-full name or phone number.
+### Password policy
 
-### 4.4 Changing a user's role
-
-Click **⋮** → **Change Role** → select the new role → **Save Role**.
-
-Security rules:
-- You cannot remove your own ADMIN role through this action.
-- The backend independently enforces this — the API returns 403 if
-  you attempt it.
-
-### 4.5 Resetting a password
-
-Click **⋮** → **Reset Password** → enter and confirm a new password → **Reset Password**.
-
-What this does:
-- Sets a new password hash (the old password is immediately invalidated).
-- Revokes all of the user's active refresh tokens (forces re-login on all devices).
-- Records the action in the audit log.
-
-The new password must meet the same policy as account creation.
-
-### 4.6 Activating and deactivating accounts
-
-Click **⋮** → **Deactivate** (or **Activate**). A confirmation dialog
-appears before the change is applied.
-
-Security rules:
-- You cannot deactivate your own account.
-- You cannot deactivate the **last active administrator**. The backend
-  returns an error if you attempt it. Promote another user to ADMIN first.
-- Deactivating a user does **not** delete their records. All cases,
-  decisions, and documents associated with them are preserved.
+Minimum 12 characters · At least one letter · At least one number  
+Example: `Court2024Admin!`
 
 ---
 
-## 5. Role Management
+## 6. Role Management
 
-Navigate to **Administration → Role Management** in the sidebar.
+Navigate to **Administration → Role Management**. Requires `role:manage` permission.
 
-> Requires: `role:manage` permission (ADMIN role only)
-
-### 5.1 Viewing roles
-
-The page is divided into two sections:
-
-- **Custom Roles** — roles you have created. These can be edited and deleted.
-- **System Roles** — the four built-in roles (ADMIN, COURT_MANAGER,
-  RECORD_OFFICER, COMMUNITY_MEMBER). These are read-only and cannot be
-  deleted.
-
-Each role card shows the role name, description, permission count, and
-the first few permission codes.
-
-### 5.2 Creating a custom role
-
-1. Click **Create Role**.
-2. Enter a name in UPPERCASE_WITH_UNDERSCORES format (e.g. `FINANCE_OFFICER`).
-3. Optionally add a description.
-4. In the permission picker, expand each group and check the permissions
-   this role should have. The group header checkbox selects all permissions
-   in that group at once.
-5. Click **Create Role**.
-
-The new role is immediately available for assignment in User Management.
-
-### 5.3 Editing a custom role
-
-Click **Edit** on a custom role card. You can update the description and
-permission set. Changes take effect for all users with that role on their
-next login (access tokens refresh every 15 minutes by default).
-
-> Note: System role permissions are defined in `backend/src/database/seed/rbacSeedData.ts`
-> and cannot be changed through the UI. This protects core court operations
-> from accidental misconfiguration.
-
-### 5.4 Deleting a custom role
-
-Click **Delete** on a custom role card. The role can only be deleted if
-**no users are currently assigned to it**. Reassign or remove all users
-from the role first.
+- **System roles** (ADMIN, COURT_MANAGER, RECORD_OFFICER, COMMUNITY_MEMBER) are read-only.
+- **Custom roles** can be created, edited (description + permissions), and deleted (only if no users assigned).
 
 ---
 
-## 6. Case Management
+## 7. Case Registration (Record Officer)
 
-Navigate to **Case Management → View All Cases** in the sidebar.
+Navigate to **Requester Management → Register Case**. Requires `case:create` permission.
 
-### 6.1 Registering a case
+The form has **5 tabs**:
 
-> Requires: `case:create` permission (RECORD_OFFICER)
+| Tab | Contents |
+|---|---|
+| 1. Case Info | Case type, title (optional), priority, location, jurisdiction basis, description |
+| 2. Plaintiff | Select from registered members (supports multiple plaintiffs) |
+| 3. Defendant | Same — supports multiple defendants; cross-filtered to prevent same person in both roles |
+| 4. Witnesses | Dynamic add/remove; full name, sex, age, phone, kebele, relationship, statement |
+| 5. Supporting | Registration notes; documents uploaded post-registration from Case Details |
 
-1. Go to **Case Management → Register Case**.
-2. Select Case Type, Priority, Location, and Description.
-3. Select the Complainant and Respondent from registered community members.
-4. Click **Register Case**.
+**Auto-generated case number:** `OTCMS-{YYYY}-{NNNN}`
 
-Both parties must be registered as community members before a case can
-be created. Unverified members can be selected but should be verified
-before proceedings begin.
+**Notifications triggered on case creation:** All active Court Managers receive a `case_created_for_review` notification.
 
-### 6.2 Case workflow
+**Duplicate warning:** If the same two parties have an open case of the same type, a warning is shown but registration is not blocked.
 
-Cases move through these statuses in order:
+---
+
+## 8. Community Member Management
+
+Navigate to **Community → View Members** or **Community → Register Member**.
+
+### Register Member fields
+
+| Section | Fields |
+|---|---|
+| Personal | Full name*, gender, date of birth, phone, occupation |
+| Address | Region, zone, woreda, kebele, village/house address |
+| Identification | ID reference number (optional) |
+
+New members start with **PENDING** verification status. Only Court Managers (with `member:verify`) can approve or reject.
+
+### Edit Member
+
+From any member's detail page, click **Edit** (requires `member:register` permission). All fields can be updated.
+
+### Verification
+
+A member must be **VERIFIED** before they can be added as a party (plaintiff/defendant) to a court case.
+
+---
+
+## 9. Case Management
+
+### Case workflow
 
 ```
 SUBMITTED → UNDER_REVIEW → VERIFIED → ASSIGNED → HEARING_SCHEDULED
-    → HEARING_IN_PROGRESS → DECISION_PENDING → DECIDED → CLOSED
+  → HEARING_IN_PROGRESS → DECISION_PENDING → DECIDED → CLOSED
 ```
 
 Alternative outcomes: `REJECTED`, `WITHDRAWN`
 
-Status transitions are enforced by the backend. The Case Detail page
-shows only the valid next actions for the current user's role.
+**Notifications on transition:**
+- Submitting user always notified.
+- Community member parties with user accounts notified on every status change.
+- On REJECTED/WITHDRAWN: all Record Officers notified.
 
-### 6.3 Case Detail tabs
-
-Each case has seven tabs:
+### Case Detail tabs
 
 | Tab | Contents |
 |---|---|
-| **Overview** | Case info, description, parties, available actions |
-| **Witnesses** | Witnesses recorded for the case |
-| **Elder Panel** | Assigned elders and their roles (Lead/Member) |
-| **Hearings** | Scheduled and completed hearings |
-| **Documents** | Uploaded case documents |
-| **Decision** | Recorded decision and approval progress |
-| **History** | Timeline of all status changes |
+| Overview | Case info, description, parties, status actions |
+| Witnesses | Recorded witnesses with testimony |
+| Elder Panel | Assigned elders (Lead/Member) |
+| Hearings | Scheduled and completed hearings |
+| Documents | Uploaded case documents |
+| Decision | Decision text, approval progress |
+| Summons | Formal defendant notifications |
+| Consent | Party consent records |
+| Appeals | Filed appeals and outcomes |
+| History | Timeline of all status changes |
+
+### Party Management pages (Record Officer sidebar)
+
+- **Plaintiffs** — all complainants across all cases, searchable, links to case
+- **Defendants** — all respondents across all cases
+- **Witnesses** — all witnesses across all cases
 
 ---
 
-## 7. Community Members
+## 10. Hearings
 
-Navigate to **Community → View Members**.
+Navigate to **Hearings → View Hearings** or **Hearings → Schedule Hearing**.
 
-> Requires: `member:view` permission
+- **Calendar view** and **List view** available via toggle.
+- **Conflict detection:** same location + overlapping time → 409 error.
+- **Elder double-booking detection:** panel members with another hearing at same time → 409 error.
 
-### 7.1 Registering a member
-
-> Requires: `member:register`
-
-1. Click **Register Member**.
-2. Enter Full Name, Gender, Phone, Address, Kebele, and ID Reference.
-3. Click **Register Member**.
-
-New members start with `PENDING` verification status.
-
-### 7.2 Verifying a member
-
-> Requires: `member:verify` (COURT_MANAGER)
-
-1. Open a member's profile.
-2. Click **Verify Member**.
-3. Choose **Approve & Verify** or **Reject**.
-4. Optionally add a verification note.
-
-Only verified members can be added as parties to a case.
+**Notifications on schedule:** All assigned panel elders and the case submitter.
 
 ---
 
-## 8. Hearings
+## 11. Decisions
 
-Navigate to **Hearings → View Hearings**.
+Decisions are recorded from **Case Details → Decision tab** or **Decisions → Record Decision**.
 
-### 8.1 Scheduling a hearing
+### Decision types
 
-> Requires: `hearing:manage`
-
-1. Click **Schedule Hearing** (or click the button from inside a Case Detail → Hearings tab).
-2. Select the Case, Start Date/Time, End Date/Time, Location, and Purpose.
-3. Click **Schedule Hearing**.
-
-The hearing calendar view shows all hearings for the current month.
-Switch between **List** and **Calendar** views using the toggle buttons.
-
-### 8.2 Hearing statuses
-
-| Status | Meaning |
+| Type | Meaning |
 |---|---|
-| SCHEDULED | Hearing is confirmed and upcoming |
-| IN_PROGRESS | Hearing is currently underway |
-| COMPLETED | Hearing has concluded |
-| POSTPONED | Hearing has been moved to a later date |
-| CANCELLED | Hearing will not take place |
+| `RECONCILIATION` | Parties reached voluntary agreement (Jaarsummaa) |
+| `RULING` | Elder panel issued a binding ruling |
+
+### Approval process
+
+Each panel elder submits an approve/reject vote. Once the required number of approvals is reached, the decision is **finalized** and the case moves to `DECIDED`. A finalized decision **cannot be modified**.
 
 ---
 
-## 9. Decisions
+## 12. Summons
 
-Decisions are accessed from the Case Detail page → **Decision** tab.
+Summons formally notify the respondent of the case and their obligation to appear.
 
-### 9.1 Recording a decision
+- **Maximum 3 attempts** per respondent per case. After 3, court may proceed in absentia.
+- **Service methods:** Personal, Representative, Posted.
+- After a summons is issued, the court must **record service** (who received it, when).
+- Respondents with user accounts receive an in-app `summons_issued` notification.
 
-> Requires: `decision:record`
-
-1. From a case in `DECISION_PENDING` status, go to the Decision tab.
-2. Click **Record Decision**.
-3. Enter the Outcome, Description, optional Remarks, Decision Date, and
-   number of Required Approvals.
-4. Click **Record Decision**.
-
-### 9.2 Approving a decision
-
-> Requires: `decision:approve`
-
-1. Open the Decision Detail page.
-2. Click **Submit Approval**.
-3. Choose **Approve** or **Reject** and optionally add a comment.
-4. Click the vote button.
-
-The approval progress bar shows how many of the required approvals have
-been received. Once the required number is reached, the decision status
-changes to `APPROVED` and the case advances to `DECIDED`.
-
-> By design, a finalized decision **cannot be modified** after approval.
-> This protects the integrity of the elder panel's ruling.
+API: `POST /api/v1/summons`, `PATCH /api/v1/summons/:id/serve`  
+Required permission: `summons:manage`
 
 ---
 
-## 10. Documents
+## 13. Consent Records
 
-Navigate to **Documents** in the sidebar, or access documents from the
-Case Detail → Documents tab.
+Records each party's explicit consent to OTC jurisdiction (Proclamation 240/2021 Art. 13).
 
-> Upload requires: `document:upload`
-> Download requires: `document:read`
+- If a party **refuses consent** (`consentGiven: false`), the case automatically transitions to `WITHDRAWN`.
+- If a party **withdraws** previously given consent, the case also transitions to `WITHDRAWN`.
+- Both parties must consent before proceedings can begin.
 
-Documents are stored on the server file system and are never served via
-a public URL. Every download request is authenticated and authorized
-individually.
-
-Maximum file size: controlled by `FILE_MAX_SIZE_MB` in `.env` (default 15 MB).
+API: `POST /api/v1/consent`, `PATCH /api/v1/consent/:id/withdraw`  
+Required permission: `consent:manage`
 
 ---
 
-## 11. Notifications
+## 14. Appeals
 
-Navigate to **Notifications** in the sidebar. All authenticated users
-can see their own notifications.
+Appeals are filed after a `DECIDED` case when a party disagrees with the ruling.
 
-Actions:
-- **Mark as Read** — mark a single notification read
-- **Mark All Read** — clear all unread indicators
+Workflow:
+1. File appeal (grounds + appellate court name).
+2. Court records the **file transfer** to the Woreda/Zone Appellate Court.
+3. Court records the **outcome** when the appellate decision is received.
 
-The notification bell in the top bar shows the unread count and refreshes
-every 60 seconds.
+Only one unresolved appeal may exist per case at a time.
 
----
-
-## 12. Reports
-
-Navigate to **Reports** in the sidebar.
-
-> Requires: `report:generate`
-
-Available reports:
-- **Cases by Status** — count of cases in each status
-- **Cases by Type** — count of cases by dispute type
-- **Hearing Schedule** — upcoming and past hearings
-- **Decisions Summary** — decisions with approval status and outcomes
-- Document statistics
-
-All report data is live from the database — there is no cached or mocked
-data in the reports module.
+API: `POST /api/v1/appeals`, `PATCH /api/v1/appeals/:id/transfer`, `PATCH /api/v1/appeals/:id/outcome`  
+Required permission: `appeal:manage`
 
 ---
 
-## 13. Audit Logs
+## 15. Documents
 
-Navigate to **Administration → Audit Logs**.
+Documents are accessed from **Case Details → Documents tab**.
 
-> Requires: `audit:read` (ADMIN only)
+- Maximum file size: `FILE_MAX_SIZE_MB` in `.env` (default 15 MB).
+- Allowed types: PDF, JPEG, PNG, DOCX, DOC.
+- Every download is authenticated and authorized — no public URLs.
+- Archive a document to hide it without deletion.
 
-The audit log is **append-only**. No one — including the System
-Administrator — can edit or delete a log entry. This is enforced at the
-API level: there are no write routes on the audit endpoint.
+---
 
-Each entry records:
+## 16. Notifications
 
-| Field | Description |
+All authenticated users see their notifications at **Notifications** in the sidebar.
+
+### Notification types
+
+| Type | Triggered by |
 |---|---|
-| Time | Exact UTC timestamp |
-| Action | Machine-readable action code (e.g. `user.created`) |
-| Entity | Resource type and ID that was affected |
-| IP Address | Client IP address at the time of the action |
+| `case_created_for_review` | Record Officer registers a case → Court Managers |
+| `case_status_changed` | Any status transition → submitter + community member parties |
+| `case_returned` | Case REJECTED/WITHDRAWN → Record Officers |
+| `case_panel_assigned` | Panel assigned → each assigned elder |
+| `hearing_scheduled` | Hearing scheduled → panel + submitter |
+| `decision_finalized` | Decision approved → submitter |
+| `summons_issued` | Summons issued → respondent (if has account) |
 
-**Filter by action** (e.g. `user.` to see all user actions) or by
-**Entity Type** (e.g. `case`) using the filter inputs at the top.
-
-Common action codes:
-
-| Action | Triggered by |
-|---|---|
-| `user.created` | Creating a new user account |
-| `user.updated` | Editing user details |
-| `user.status_changed` | Activating or deactivating a user |
-| `user.roles_changed` | Changing a user's role |
-| `user.password_reset_by_admin` | Admin-initiated password reset |
-| `role.created` | Creating a custom role |
-| `role.updated` | Updating a role's permissions |
-| `role.deleted` | Deleting a custom role |
-| `auth.login_succeeded` | Successful login |
-| `auth.login_failed` | Failed login attempt |
-| `auth.password_reset` | User-initiated password reset |
-| `case.status_changed` | Case status transition |
-| `case.created` | New case registered |
+The notification bell in the top bar shows unread count, refreshed every 60 seconds.
 
 ---
 
-## 14. System Settings
+## 17. Reports
+
+Navigate to **Reports** (requires `report:generate` permission).
+
+Available live reports:
+- Cases by Status (bar chart)
+- Cases by Type (bar chart)
+- Hearing Schedule
+- Decisions Summary
+
+All data is live from the database — no mock data.
+
+---
+
+## 18. Audit Logs
+
+Navigate to **Administration → Audit Logs** (requires `audit:read` — Admin only).
+
+The audit log is **append-only** — nobody can edit or delete entries. Filter by action code or entity type.
+
+### Key action codes
+
+| Code | Event |
+|---|---|
+| `user.created` | New user created |
+| `user.status_changed` | Account activated/deactivated |
+| `user.roles_changed` | Role assigned or changed |
+| `user.password_reset_by_admin` | Admin reset a user's password |
+| `role.created/updated/deleted` | Custom role management |
+| `case.created` | Case registered |
+| `case.status_changed` | Case workflow transition |
+| `case.panel_assigned` | Elders assigned to panel |
+| `case.witness_added` | Witness recorded |
+| `member.registered` | Community member registered |
+| `member.updated` | Member profile edited |
+| `member.verification_decided` | Verification approved/rejected |
+| `auth.login_succeeded/failed` | Login events |
+| `summons.issued/served` | Summons workflow |
+| `consent.given/withdrawn` | Consent workflow |
+| `appeal.filed/transferred/outcome_recorded` | Appeal workflow |
+
+---
+
+## 19. System Settings
 
 Navigate to **Administration → System Settings**.
 
-The settings page has three tabs:
+Three tabs:
 
-### Profile
-View your current account information (name, email, role, permission count).
-To update your name or phone number, contact another administrator or
-use the User Management page.
-
-### Password
-Change your own password. Requires the current password.
-
-Policy:
-- Minimum 12 characters
-- At least one letter
-- At least one number
-
-### System Information
-Displays the current application version, environment, database type, and
-organization name.
+| Tab | Contents |
+|---|---|
+| Profile | View your account info (read-only — contact admin to change) |
+| Password | Change your own password (requires current password) |
+| System | App version, environment, database type |
 
 ---
 
-## 15. Security Rules
+## 20. Security Rules
 
-The following rules are enforced by the backend and cannot be bypassed
-by modifying the frontend:
+All enforced server-side — cannot be bypassed by URL manipulation:
 
 | Rule | Enforcement |
 |---|---|
-| You cannot deactivate your own account | `users.service.setStatus` checks `id === actorUserId` |
-| You cannot remove your own ADMIN role | `users.service.assignRoles` checks against `actorUserId` |
-| The last active administrator cannot be deactivated | Service counts active admins before allowing status change |
-| Passwords are never stored in plain text | Argon2id hash with OWASP-recommended parameters |
-| Refresh tokens are stored as SHA-256 hashes | Raw tokens never written to the database |
-| Reused refresh tokens revoke the entire token family | Detects stolen tokens and kills all related sessions |
-| System roles cannot be deleted or have permissions changed via UI | `rolesService.delete/update` checks `SYSTEM_ROLES` list |
-| Custom roles can only be deleted if no users are assigned | Service checks `role.users.length` before deletion |
-| All API endpoints require a valid JWT | `authenticate` middleware on every protected router |
-| RBAC permissions checked independently per endpoint | `requirePermission` middleware — not only sidebar visibility |
-| Finalized decisions cannot be modified | Business rule in `decisions.service` |
-| Audit log is append-only | No write routes exist on the audit router |
+| You cannot deactivate your own account | `users.service.setStatus` |
+| You cannot remove your own ADMIN role | `users.service.assignRoles` |
+| Last active admin cannot be deactivated | Service counts active admins |
+| System roles cannot be deleted | `rolesService.delete` check |
+| Custom roles need zero users to delete | `role.users.length` check |
+| Finalized decisions cannot be modified | `decisions.service` |
+| Audit log is append-only | No write routes on audit router |
+| Community members see only own cases | `case:view_own` scoping in service |
+| Max 3 summons per respondent per case | `summonsService.issue` check |
+| Consent refusal auto-withdraws case | `consentService.record` |
+| Appeal only on DECIDED cases | `appealsService.file` check |
 
 ---
 
-## 16. Roles and Permissions Reference
+## 21. Permissions Reference
 
-### ADMIN
-| Permission | Description |
-|---|---|
-| `user:manage` | Create, update, activate/deactivate users |
-| `role:manage` | Manage roles and permissions |
-| `audit:read` | View audit logs |
-| `member:register` | Register a community member |
-| `member:view` | View community member records |
-| `case:view_all` | View all cases |
-| `case:assign` | Assign/reassign a case to a panel |
-| `document:upload` | Upload a document |
-| `document:read` | Download/view an authorized document |
-| `report:generate` | Generate reports |
+### ADMIN (10 permissions)
+`user:manage`, `role:manage`, `audit:read`, `member:register`, `member:view`, `case:view_all`, `case:assign`, `document:upload`, `document:read`, `report:generate`, `summons:read`, `consent:read`, `appeal:read`
 
-### COURT_MANAGER
-| Permission | Description |
-|---|---|
-| `member:verify` | Verify a community member |
-| `member:view` | View community member records |
-| `case:view_assigned` | View cases assigned to self |
-| `case:transition` | Move a case through workflow states |
-| `hearing:manage` | Schedule and manage hearings |
-| `decision:record` | Record a decision |
-| `decision:approve` | Approve/finalize a decision |
-| `document:upload` | Upload a document |
-| `document:read` | Download/view an authorized document |
-| `report:generate` | Generate reports |
+### COURT_MANAGER (13 permissions)
+`member:verify`, `member:view`, `case:view_assigned`, `case:transition`, `hearing:manage`, `decision:record`, `decision:approve`, `document:upload`, `document:read`, `report:generate`, `summons:manage`, `summons:read`, `consent:manage`, `consent:read`, `appeal:manage`, `appeal:read`
 
-### RECORD_OFFICER
-| Permission | Description |
-|---|---|
-| `member:register` | Register a community member |
-| `member:view` | View community member records |
-| `case:create` | Register a new case |
-| `case:view_all` | View all cases |
-| `case:update` | Update case details |
-| `case:transition` | Move a case through workflow states |
-| `case:assign` | Assign/reassign a case to a panel |
-| `hearing:manage` | Schedule and manage hearings |
-| `document:upload` | Upload a document |
-| `document:read` | Download/view an authorized document |
-| `report:generate` | Generate reports |
+### RECORD_OFFICER (14 permissions)
+`member:register`, `member:view`, `case:create`, `case:view_all`, `case:update`, `case:transition`, `case:assign`, `hearing:manage`, `document:upload`, `document:read`, `report:generate`, `summons:manage`, `summons:read`, `consent:manage`, `consent:read`, `appeal:manage`, `appeal:read`
 
-### COMMUNITY_MEMBER
-| Permission | Description |
-|---|---|
-| `case:view_own` | View own submitted cases |
-| `document:read` | Download/view authorized documents |
+### COMMUNITY_MEMBER (4 permissions)
+`case:view_own`, `document:read`, `consent:read`, `appeal:read`
 
 ---
 
-## 17. Troubleshooting
+## 22. Troubleshooting
 
-### Login returns 401 — Invalid email or password
-- Check the email and password are correct.
-- If the account was recently created, use the temporary password
-  provided at creation time.
-- Temporary passwords must meet the policy (12+ chars, letter + number).
+### "Could not load community members" on Register Case page
 
-### Login returns 429 — Too Many Requests
-- You have exceeded the rate limit for the current window.
-- Restart the backend server to clear in-memory counters during development.
-- Wait for the rate-limit window to expire (default 15 minutes).
-- In production, increase `AUTH_RATE_LIMIT_MAX` in `.env` if needed.
+The backend server is not running.  
+Fix: Open a terminal in `backend/` and run `npm run dev`.
 
-### Login returns 403 — Account not active
-- The account has been deactivated. Contact another administrator to
-  reactivate it via User Management.
+### Login returns 401
 
-### Cannot reach database — `localhost:3306`
-- The MySQL service is not running. Start it:
-  ```powershell
-  Start-Service MySQL80
-  ```
-- If `localhost` resolves to IPv6 (`::1`) but MySQL listens on IPv4, change
-  `DATABASE_URL` in `backend/.env` to use `127.0.0.1` instead of `localhost`.
+Check email and password. Temporary passwords must be min 12 chars with a letter and number.
 
-### Password I set for a new user doesn't work
-- Confirm the password meets the policy: minimum 12 characters, at least
-  one letter and one number.
-- If you left the password blank during creation and closed the modal
-  without copying the auto-generated password, use **Reset Password** from
-  the ⋮ menu to set a new one.
+### Login returns 429 (Too Many Requests)
 
-### Cannot deactivate a user — "last active administrator"
-- There is only one active ADMIN account. Promote another user to ADMIN
-  first (Change Role → ADMIN), then deactivate the original account.
+Rate limit reached. Restart the backend (clears in-memory counters) or wait 15 minutes.
 
-### Role change doesn't take effect immediately
-- JWT access tokens are valid for `JWT_ACCESS_TTL` (default 15 minutes).
-- The user must log out and back in, or wait for the token to expire and
-  be refreshed, for the new permissions to appear in their session.
+### Login returns 403 (Account not active)
+
+Account deactivated. Another admin must reactivate via User Management.
+
+### "Can't reach database" / P1001 error
+
+MySQL is stopped. Start it (requires Administrator on Windows):  
+`Start-Service MySQL80`  
+If `localhost` fails, use `127.0.0.1` in `DATABASE_URL`.
+
+### Password set for new user doesn't work
+
+Password doesn't meet policy (min 12 chars, letter + number). Use **Reset Password** from ⋮ menu to set a valid one.
 
 ### Cannot delete a custom role
-- The role is still assigned to one or more users. Go to User Management,
-  filter by that role, change all those users to a different role, then
-  try deleting the role again.
+
+The role still has users assigned. Go to User Management, change all those users to a different role, then delete.
+
+### Role change doesn't take effect immediately
+
+JWT access tokens are valid for `JWT_ACCESS_TTL` (default 15m). The user must re-login for new permissions.
 
 ### Backend TypeScript errors on `npm run dev`
-- Some pre-existing type errors exist in modules other than `users/`
-  (related to `exactOptionalPropertyTypes` in `cases`, `hearings`, and
-  the `argon2` version). These do not affect runtime behaviour — the
-  backend runs correctly with `tsx` despite these warnings. They will be
-  resolved in a future refactor pass.
+
+Some pre-existing type errors exist in modules other than `users/` (related to `exactOptionalPropertyTypes`). These do not affect runtime — the backend runs correctly with `tsx`. Fixed in commit `48e4025`.
 
 ---
 
-*Last updated: October 2026 — reflects OTCMS v1.0 with full User Management,
-Role Management, Case Workflow, Hearings, Decisions, Documents, Notifications,
-Reports, and Audit Log modules.*
+*Last updated: October 2026 — reflects OTCMS v1.1 with full case workflow, summons, consent, appeals, multi-party registration, expanded member profiles, inter-actor notifications, and role-aware dashboards.*
