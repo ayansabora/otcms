@@ -15,6 +15,7 @@ import { Card, CardBody } from "../../components/Card";
 import { AlertMessage } from "../../components/ErrorMessage";
 import { Badge } from "../../components/Badge";
 import { Tabs, TabPanel } from "../../components/Tabs";
+import { useAuth } from "../../auth/AuthContext";
 import type { CaseType, CommunityMember } from "../../types/api";
 
 /* ─── constants ─────────────────────────────────────────────────────────── */
@@ -185,6 +186,7 @@ function MemberSelector({
 export function NewCasePage() {
   const navigate    = useNavigate();
   const queryClient = useQueryClient();
+  const { user }    = useAuth();
   const [activeTab, setActiveTab] = useState("case");
 
   // ── Tab 1: Case Info ───────────────────────────────────────────────────
@@ -211,10 +213,11 @@ export function NewCasePage() {
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [submitting,       setSubmitting]        = useState(false);
 
-  // ── Members query ─────────────────────────────────────────────────────
+  // ── Members query — only fires once auth is confirmed ────────────────
   const { data: membersData, isLoading, isError, refetch } = useQuery({
     queryKey: ["community-members", { search: "" }],
     queryFn:  () => communityMembersApi.list({ pageSize: 500 }),
+    enabled:  !!user,   // wait for the user session to be established
     staleTime: 5_000,
     retry: 2,
   });
