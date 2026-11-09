@@ -8,6 +8,13 @@ export interface CreateCaseInput {
   location?: string;
   priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
   jurisdictionBasis?: string;
+  isRequest?: boolean;
+  opposingParty?: {
+    fullName?: string;
+    phone?: string;
+    kebele?: string;
+    address?: string;
+  };
   parties: { communityMemberId: string; roleInCase: "COMPLAINANT" | "RESPONDENT" }[];
   witnesses?: {
     fullName: string;
@@ -20,7 +27,7 @@ export interface CreateCaseInput {
 }
 
 export const casesApi = {
-  list: (params: { page?: number; pageSize?: number; status?: CaseStatus; caseType?: CaseType; search?: string } = {}) =>
+  list: (params: { page?: number; pageSize?: number; status?: CaseStatus; caseType?: CaseType; search?: string; isRequest?: boolean } = {}) =>
     api.get<PaginatedResult<Case>>("/cases", params),
   get: (id: string) => api.get<{ case: Case }>(`/cases/${id}`),
   create: (input: CreateCaseInput) =>

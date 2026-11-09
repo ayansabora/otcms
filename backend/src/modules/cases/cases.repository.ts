@@ -26,6 +26,7 @@ export const casesRepository = {
     description: string;
     location?: string;
     jurisdictionBasis?: string;
+    isRequest?: boolean;
     priority: $Enums.CasePriority;
     minWitnessesRequired: number;
     submittedByUserId?: string;
@@ -47,6 +48,7 @@ export const casesRepository = {
     if (data.location          !== undefined) createData.location          = data.location;
     if (data.jurisdictionBasis !== undefined) createData.jurisdictionBasis = data.jurisdictionBasis;
     if (data.submittedByUserId !== undefined) createData.submittedByUserId = data.submittedByUserId;
+    if (data.isRequest         !== undefined) (createData as Record<string,unknown>).isRequest = data.isRequest;
 
     return prisma.case.create({ data: createData, ...caseWithRelations });
   },
@@ -150,10 +152,12 @@ export const casesRepository = {
     dateTo?: Date;
     onlyAssignedToUserId?: string;
     onlySubmittedByUserId?: string;
+    isRequest?: boolean;
   }) {
     const where: Prisma.CaseWhereInput = { archivedAt: null };
     if (params.status)   where.status   = params.status;
     if (params.caseType) where.caseType = params.caseType;
+    if (params.isRequest !== undefined) (where as Record<string,unknown>).isRequest = params.isRequest;
     if (params.dateFrom || params.dateTo) {
       where.createdAt = {};
       if (params.dateFrom) where.createdAt.gte = params.dateFrom;

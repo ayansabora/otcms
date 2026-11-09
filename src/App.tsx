@@ -66,6 +66,9 @@ import { PlaintiffsPage } from "./pages/parties/PlaintiffsPage";
 import { DefendantsPage } from "./pages/parties/DefendantsPage";
 import { WitnessesPage } from "./pages/parties/WitnessesPage";
 
+// Case Requests (Record Officer queue)
+import { CaseRequestsPage } from "./pages/case-requests/CaseRequestsPage";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -151,6 +154,9 @@ function App() {
               <Route path="plaintiffs" element={<PlaintiffsPage />} />
               <Route path="defendants" element={<DefendantsPage />} />
               <Route path="witnesses" element={<WitnessesPage />} />
+
+              {/* Record Officer case request queue */}
+              <Route path="case-requests" element={<CaseRequestsPage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/app" replace />} />

@@ -194,6 +194,9 @@ model Case {
   description  String     @db.Text
   location     String?    @db.VarChar(255)
   submittedByUserId String? @map("submitted_by_user_id")
+  // True when submitted by a Community Member via the self-service request form.
+  // False (default) for cases registered directly by a Record Officer.
+  isRequest        Boolean @default(false) @map("is_request")
   // Jurisdiction basis — required per BR-JR-003 before advancing past SUBMITTED
   jurisdictionBasis       String?   @map("jurisdiction_basis") @db.VarChar(500)
   jurisdictionVerifiedAt  DateTime? @map("jurisdiction_verified_at")

@@ -36,7 +36,7 @@ const DEFAULT_MIN_WITNESSES: Record<string, number> = {
 export const casesService = {
   async create(input: CreateCaseInput, caller: CallerContext) {
     // Every party must be a registered — and, per §11 rule 1, verified —
-    // community member before a case can reference them.
+    // For community member requests, skip party verification (parties are empty)
     for (const party of input.parties) {
       const member = await communityMembersRepository.findById(party.communityMemberId);
       if (!member) throw new ValidationError(`Community member ${party.communityMemberId} not found`);
@@ -53,7 +53,6 @@ export const casesService = {
       input.minWitnessesRequired ?? DEFAULT_MIN_WITNESSES[input.caseType] ?? 0;
 
     // BR-CR-007: warn if same complainant+respondent already have an open case
-    // of the same type (does NOT block — just returns a warning flag in the response).
     const complainantId = input.parties.find((p) => p.roleInCase === "COMPLAINANT")?.communityMemberId;
     const respondentId  = input.parties.find((p) => p.roleInCase === "RESPONDENT")?.communityMemberId;
     let duplicateWarning: string | undefined;
@@ -66,13 +65,28 @@ export const casesService = {
       }
     }
 
+    // If an opposing party was supplied with the request, append it to the description
+    let description = input.description;
+    if (input.opposingParty && (input.opposingParty.fullName || input.opposingParty.phone)) {
+      const op = input.opposingParty;
+      const lines = [
+        "--- Opposing Party ---",
+        op.fullName  ? `Name:    ${op.fullName}`  : "",
+        op.phone     ? `Phone:   ${op.phone}`     : "",
+        op.kebele    ? `Kebele:  ${op.kebele}`    : "",
+        op.address   ? `Address: ${op.address}`   : "",
+      ].filter(Boolean).join("\n");
+      description = `${description}\n\n${lines}`;
+    }
+
     const createdCase = await casesRepository.create({
       caseNumber,
       caseType:   input.caseType,
-      description: input.description,
+      description,
       ...(input.title             ? { title:             input.title }             : {}),
       ...(input.location          ? { location:          input.location }          : {}),
       ...(input.jurisdictionBasis ? { jurisdictionBasis: input.jurisdictionBasis } : {}),
+      isRequest: input.isRequest ?? false,
       priority: input.priority,
       minWitnessesRequired,
       submittedByUserId: caller.userId,
@@ -96,27 +110,47 @@ export const casesService = {
 
     // ── Inter-actor notification: notify all Court Managers that a new case
     // is ready for their review. Court Managers have case:view_assigned or
-    // case:transition permission — we look up users with the COURT_MANAGER role.
-    const courtManagers = await prisma.user.findMany({
-      where: {
-        status: "ACTIVE",
-        archivedAt: null,
-        roles: { some: { role: { name: "COURT_MANAGER" } } },
-      },
-      select: { id: true },
-    });
-    for (const cm of courtManagers) {
+    if (input.isRequest) {
+      // Community Member request → notify Record Officers
+      const recordOfficers = await prisma.user.findMany({
+        where: { status: "ACTIVE", archivedAt: null, roles: { some: { role: { name: "RECORD_OFFICER" } } } },
+        select: { id: true },
+      });
+      for (const ro of recordOfficers) {
+        await notify({
+          userId: ro.id,
+          type: "case_request_received",
+          title: `New case request: ${caseNumber}`,
+          body: `A community member has submitted a ${input.caseType.replace(/_/g, " ")} request. Review and formally register the case.`,
+          data: { caseId: createdCase.id, caseNumber, isRequest: true },
+        });
+      }
+      // Also confirm to the submitter
       await notify({
-        userId: cm.id,
-        type: "case_created_for_review",
-        title: `New case ready for review: ${caseNumber}`,
-        body: `Case type: ${input.caseType.replace(/_/g, " ")}. A Record Officer has registered a new case awaiting your review.`,
+        userId: caller.userId,
+        type: "case_request_submitted",
+        title: "Your case request has been received",
+        body: `Request ${caseNumber} has been submitted. A Record Officer will review your request and contact you.`,
         data: { caseId: createdCase.id, caseNumber },
       });
+    } else {
+      // Formal registration → notify Court Managers
+      const courtManagers = await prisma.user.findMany({
+        where: { status: "ACTIVE", archivedAt: null, roles: { some: { role: { name: "COURT_MANAGER" } } } },
+        select: { id: true },
+      });
+      for (const cm of courtManagers) {
+        await notify({
+          userId: cm.id,
+          type: "case_created_for_review",
+          title: `New case ready for review: ${caseNumber}`,
+          body: `Case type: ${input.caseType.replace(/_/g, " ")}. A Record Officer has registered a new case awaiting your review.`,
+          data: { caseId: createdCase.id, caseNumber },
+        });
+      }
     }
 
     return { case: createdCase, duplicateWarning };
-  },
 
   async getByIdForCaller(id: string, caller: CallerContext) {
     const found = await casesRepository.findById(id);
@@ -335,6 +369,7 @@ export const casesService = {
     if (query.caseType) params.caseType = query.caseType;
     if (query.dateFrom) params.dateFrom = query.dateFrom;
     if (query.dateTo) params.dateTo = query.dateTo;
+    if (query.isRequest !== undefined) params.isRequest = query.isRequest;
 
     // Visibility scoping applied server-side based on the caller's actual
     // permissions — never client-supplied.

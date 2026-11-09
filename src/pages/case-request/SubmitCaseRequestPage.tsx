@@ -1,14 +1,18 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import { Send, Info } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Send, Info, CheckCircle2, User, MapPin } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { casesApi } from "../../api/cases";
+import { communityMembersApi } from "../../api/communityMembers";
 import { ApiError } from "../../api/client";
-import { api } from "../../api/client";
+import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../../components/Button";
 import { Input, Select, TextArea } from "../../components/Input";
 import { PageHeader } from "../../components/PageHeader";
-import { Card, CardBody } from "../../components/Card";
+import { Card, CardHeader, CardBody } from "../../components/Card";
 import { AlertMessage } from "../../components/ErrorMessage";
 import { useToast } from "../../components/Toast";
+import { Badge } from "../../components/Badge";
 import type { CaseType } from "../../types/api";
 
 const CASE_TYPES: { value: CaseType; label: string }[] = [
@@ -22,87 +26,119 @@ const CASE_TYPES: { value: CaseType; label: string }[] = [
   { value: "OTHER",            label: "Other" },
 ];
 
-/**
- * Community Member case request page.
- * This does NOT create a court case directly — it submits a request
- * that the Record Officer reviews and formally registers.
- *
- * Implementation: we use the existing /api/v1/cases endpoint with
- * a "request" flag in the description prefix so the Record Officer
- * can identify and process it. The case starts at SUBMITTED status
- * and the Record Officer reviews it before advancing to UNDER_REVIEW.
- *
- * The community member's communityMemberId is resolved server-side
- * via their userId → CommunityMember lookup (case:view_own scoping
- * already handles this in cases.service.ts).
- */
 export function SubmitCaseRequestPage() {
-  const navigate = useNavigate();
-  const toast = useToast();
+  const navigate  = useNavigate();
+  const toast     = useToast();
+  const { user }  = useAuth();
 
-  const [caseType,       setCaseType]       = useState<CaseType>("OTHER");
-  const [description,    setDescription]    = useState("");
-  const [opposingName,  setOpposingName]   = useState("");
-  const [opposingPhone,  setOpposingPhone]  = useState("");
-  const [location,       setLocation]       = useState("");
-  const [submitting,     setSubmitting]     = useState(false);
-  const [error,          setError]         = useState<string | null>(null);
+  // Section 1 — Dispute information
+  const [caseType,    setCaseType]    = useState<CaseType>("OTHER");
+  const [location,    setLocation]    = useState("");
+  const [description, setDescription] = useState("");
+
+  // Section 3 — Opposing party
+  const [oppName,    setOppName]    = useState("");
+  const [oppPhone,   setOppPhone]   = useState("");
+  const [oppKebele,  setOppKebele]  = useState("");
+  const [oppAddress, setOppAddress] = useState("");
+
+  // Section 5 — Declaration
+  const [declared, setDeclared] = useState(false);
+
+  // UI
+  const [submitting, setSubmitting] = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+  const [submitted,  setSubmitted]  = useState<{ caseNumber: string; caseId: string } | null>(null);
+
+  // Auto-load the CM's profile from the community_members table
+  // via userId lookup — the /community-members endpoint uses findByUserId internally
+  const { data: membersData } = useQuery({
+    queryKey: ["community-members", "my-profile", user?.id],
+    queryFn: () => communityMembersApi.list({ pageSize: 5 }),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  // Find the member record linked to the logged-in user
+  const myProfile = membersData?.items.find(() => true) ?? null; // best-effort — first result
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (description.length < 20) {
-      setError("Please describe your dispute in at least 20 characters so the court can understand your request.");
+    if (description.trim().length < 20) {
+      setError("Please describe your dispute in at least 20 characters.");
+      return;
+    }
+    if (!declared) {
+      setError("Please confirm the declaration before submitting.");
       return;
     }
 
     setSubmitting(true);
     try {
-      // Build a description that includes the request metadata
-      // The Record Officer will use this to formally register the case
-      const fullDescription = [
-        `[CASE REQUEST]`,
-        `Opposing party: ${opposingName || "Not identified"}`,
-        opposingPhone ? `Opposing phone: ${opposingPhone}` : "",
-        `Location: ${location || "Not specified"}`,
-        "",
-        description,
-      ].filter(Boolean).join("\n");
-
-      // Submit as a case — the community member's communityMemberId
-      // will be linked by the Record Officer during formal registration.
-      // For now, this creates a case record the officer can review.
-      await api.post("/cases", {
+      const result = await casesApi.create({
         caseType,
-        description: fullDescription,
-        location: location || undefined,
-        priority: "NORMAL",
-        parties: [], // No parties yet — Record Officer will add them
+        description: description.trim(),
+        location:    location.trim() || undefined,
+        priority:    "NORMAL",
+        isRequest:   true,
+        parties:     [],    // Record Officer links the parties during formal registration
+        opposingParty: (oppName || oppPhone || oppKebele || oppAddress)
+          ? { fullName: oppName || undefined, phone: oppPhone || undefined, kebele: oppKebele || undefined, address: oppAddress || undefined }
+          : undefined,
       });
 
-      toast.success("Your case request has been submitted. The court office will contact you.");
-      setTimeout(() => navigate("/app/my-cases"), 2000);
+      setSubmitted({ caseNumber: result.case.caseNumber, caseId: result.case.id });
+      toast.success("Case request submitted successfully.");
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Could not submit your request. Please try again or visit the court office in person.");
-      }
+      setError(err instanceof ApiError ? err.message : "Could not submit your request. Please try again or visit the court office in person.");
     } finally {
       setSubmitting(false);
     }
   }
 
+  // ── Success state ────────────────────────────────────────────────────────
+  if (submitted) {
+    return (
+      <div className="max-w-xl">
+        <PageHeader title="Request Submitted" />
+        <Card>
+          <CardBody className="space-y-5 py-8 text-center">
+            <CheckCircle2 size={48} className="text-[var(--color-success)] mx-auto" />
+            <div>
+              <p className="font-display text-xl text-[var(--color-ink)] mb-1">Your request has been received</p>
+              <p className="text-sm text-[var(--color-muted)]">Request ID: <span className="font-mono font-semibold text-[var(--color-ink)]">{submitted.caseNumber}</span></p>
+            </div>
+            <div className="bg-[var(--color-bg)] rounded-lg px-5 py-4 text-sm text-[var(--color-muted)] leading-relaxed text-left">
+              <p className="font-semibold text-[var(--color-ink)] mb-1">What happens next?</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>A Record Officer will review your request.</li>
+                <li>You will receive a notification when your case is formally registered.</li>
+                <li>If additional information is needed, you will be contacted.</li>
+                <li>Once registered, the case enters the Court Manager's review process.</li>
+              </ol>
+            </div>
+            <div className="flex gap-3 justify-center">
+              <Button variant="secondary" onClick={() => navigate("/app/my-cases")}>View My Cases</Button>
+              <Button onClick={() => { setSubmitted(null); setDescription(""); setDeclared(false); }}>Submit Another</Button>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
+
+  // ── Form ─────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-2xl">
       <PageHeader
         title="Submit Case Request"
-        subtitle="Request assistance from the Oromo Traditional Court for a dispute."
+        subtitle="Request assistance from the Oromo Traditional Court of Bale Robe City."
         breadcrumb={[{ label: "My Cases", to: "/app/my-cases" }, { label: "Submit Request" }]}
       />
 
-      {/* Info banner */}
+      {/* How it works */}
       <Card className="mb-5">
         <CardBody>
           <div className="flex items-start gap-3">
@@ -110,10 +146,10 @@ export function SubmitCaseRequestPage() {
             <div className="text-sm text-[var(--color-muted)] leading-relaxed">
               <p className="font-semibold text-[var(--color-ink)] mb-1">How case requests work</p>
               <p>
-                Submitting this form sends a request to the court office. A Record Officer
-                will review your request, contact you and the other party, and formally register
-                the case. You will receive a notification when your case is registered.
-                This request does <strong>not</strong> automatically create a court case.
+                This form sends your dispute request to the court office.
+                A Record Officer will review your submission, contact both parties,
+                and formally register the case. You will receive a notification when
+                your case is registered. Submitting this form does <strong>not</strong> automatically open a court case.
               </p>
             </div>
           </div>
@@ -122,24 +158,21 @@ export function SubmitCaseRequestPage() {
 
       {error && <AlertMessage variant="danger" message={error} className="mb-4" />}
 
-      <form onSubmit={handleSubmit}>
-        <Card className="mb-5">
-          <CardBody className="space-y-4">
-            <h2 className="font-semibold text-sm uppercase tracking-wide text-[var(--color-muted)]">
-              Dispute Information
-            </h2>
+      <form onSubmit={handleSubmit} noValidate>
 
+        {/* Section 1 — Dispute Information */}
+        <Card className="mb-4">
+          <CardHeader title="1. Dispute Information" icon={<MapPin />} />
+          <CardBody className="space-y-4">
             <Select label="Case Type" value={caseType} onChange={(e) => setCaseType(e.target.value as CaseType)} required>
-              {CASE_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
+              {CASE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </Select>
 
             <Input
               label="Location of Dispute (optional)"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="Where did the dispute occur?"
+              placeholder="Kebele, village, or area where the dispute occurred"
             />
 
             <TextArea
@@ -149,48 +182,124 @@ export function SubmitCaseRequestPage() {
               required
               minLength={20}
               rows={6}
-              placeholder="Explain what happened, what the dispute is about, and what you are asking the court to do. Be as detailed as possible."
-              hint="Minimum 20 characters."
+              placeholder="Explain what happened, the background of the dispute, and what you are requesting the court to do. Be as detailed as possible."
+              hint={`${description.length} characters${description.length < 20 ? ` — minimum 20` : ""}`}
             />
           </CardBody>
         </Card>
 
-        <Card className="mb-5">
-          <CardBody className="space-y-4">
-            <h2 className="font-semibold text-sm uppercase tracking-wide text-[var(--color-muted)]">
-              Opposing Party (if known)
-            </h2>
-            <p className="text-xs text-[var(--color-muted)]">
-              If you know the name of the person you have a dispute with, provide it here.
-              This helps the court office locate and contact them. Leave blank if unknown.
-            </p>
+        {/* Section 2 — Requester Information (auto-filled) */}
+        <Card className="mb-4">
+          <CardHeader title="2. Your Information" icon={<User />} subtitle="Automatically retrieved from your registered profile." />
+          <CardBody>
+            {myProfile ? (
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <div>
+                  <p className="text-xs text-[var(--color-muted)] uppercase tracking-wide mb-0.5">Full Name</p>
+                  <p className="font-semibold text-[var(--color-ink)]">{myProfile.fullName}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--color-muted)] uppercase tracking-wide mb-0.5">Phone</p>
+                  <p className="font-semibold text-[var(--color-ink)]">{myProfile.phone || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--color-muted)] uppercase tracking-wide mb-0.5">Kebele</p>
+                  <p className="font-semibold text-[var(--color-ink)]">{myProfile.kebele || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--color-muted)] uppercase tracking-wide mb-0.5">Address</p>
+                  <p className="font-semibold text-[var(--color-ink)]">{myProfile.address || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--color-muted)] uppercase tracking-wide mb-0.5">Woreda</p>
+                  <p className="font-semibold text-[var(--color-ink)]">{myProfile.woreda || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--color-muted)] uppercase tracking-wide mb-0.5">Verification</p>
+                  <Badge variant={myProfile.verificationStatus === "VERIFIED" ? "success" : "warning"} size="sm">
+                    {myProfile.verificationStatus}
+                  </Badge>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-[var(--color-muted)]">Your profile information will be included with this request.</p>
+                <p className="text-xs text-[var(--color-muted)]">
+                  To update your contact details, visit your{" "}
+                  <Link to="/app/settings" className="text-[var(--color-primary)] hover:underline">profile settings</Link>.
+                </p>
+              </div>
+            )}
+          </CardBody>
+        </Card>
 
+        {/* Section 3 — Opposing Party */}
+        <Card className="mb-4">
+          <CardHeader title="3. Opposing Party Information" subtitle="Leave blank if unknown. All fields are optional." />
+          <CardBody className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Opposing Party Name (optional)"
-                value={opposingName}
-                onChange={(e) => setOpposingName(e.target.value)}
-                placeholder="Full name of the other party"
+                label="Full Name"
+                value={oppName}
+                onChange={(e) => setOppName(e.target.value)}
+                placeholder="Name of the other party"
               />
               <Input
-                label="Opposing Party Phone (optional)"
+                label="Phone Number"
                 type="tel"
-                value={opposingPhone}
-                onChange={(e) => setOpposingPhone(e.target.value)}
+                value={oppPhone}
+                onChange={(e) => setOppPhone(e.target.value)}
                 placeholder="Phone number"
+              />
+              <Input
+                label="Kebele"
+                value={oppKebele}
+                onChange={(e) => setOppKebele(e.target.value)}
+                placeholder="Kebele name or number"
+              />
+              <Input
+                label="Address"
+                value={oppAddress}
+                onChange={(e) => setOppAddress(e.target.value)}
+                placeholder="Village or house address"
               />
             </div>
           </CardBody>
         </Card>
 
-        <div className="flex justify-end gap-3">
+        {/* Section 5 — Declaration */}
+        <Card className="mb-6">
+          <CardBody>
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={declared}
+                onChange={(e) => setDeclared(e.target.checked)}
+                className="mt-1 w-4 h-4 rounded accent-[var(--color-primary)] shrink-0 cursor-pointer"
+              />
+              <span className="text-sm text-[var(--color-ink)] leading-relaxed">
+                I confirm that the information provided in this request is accurate to the best of my knowledge.
+                I understand that providing false information to the Oromo Traditional Court is a serious matter.
+              </span>
+            </label>
+          </CardBody>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex items-center justify-between gap-3">
           <Button type="button" variant="secondary" onClick={() => navigate("/app/my-cases")}>
             Cancel
           </Button>
-          <Button type="submit" loading={submitting} leftIcon={<Send size={15} />}>
+          <Button
+            type="submit"
+            loading={submitting}
+            disabled={submitting || !declared || description.trim().length < 20}
+            leftIcon={<Send size={15} />}
+          >
             {submitting ? "Submitting…" : "Submit Request"}
           </Button>
         </div>
+
       </form>
     </div>
   );

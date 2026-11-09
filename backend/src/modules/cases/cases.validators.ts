@@ -29,9 +29,18 @@ export const createCaseSchema = z.object({
   location:              z.string().max(255).optional(),
   priority:              z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL"),
   jurisdictionBasis:     z.string().max(500).optional(),
-  parties:               z.array(casePartySchema).min(1, "At least one party is required"),
+  parties:               z.array(casePartySchema).default([]),
   witnesses:             z.array(witnessInputSchema).optional(),
   minWitnessesRequired:  z.number().int().min(0).max(20).optional(),
+  // Community Member self-service request flag
+  isRequest:             z.boolean().optional().default(false),
+  // Opposing party information supplied by CM (stored in description if no community member record)
+  opposingParty: z.object({
+    fullName: z.string().max(255).optional(),
+    phone:    z.string().max(32).optional(),
+    kebele:   z.string().max(128).optional(),
+    address:  z.string().max(255).optional(),
+  }).optional(),
 });
 export type CreateCaseInput = z.infer<typeof createCaseSchema>;
 
@@ -62,5 +71,6 @@ export const listCasesQuerySchema = paginationSchema.extend({
   caseType:  caseTypeEnum.optional(),
   dateFrom:  z.coerce.date().optional(),
   dateTo:    z.coerce.date().optional(),
+  isRequest: z.coerce.boolean().optional(),
 });
 export type ListCasesQuery = z.infer<typeof listCasesQuerySchema>;

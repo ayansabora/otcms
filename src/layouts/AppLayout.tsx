@@ -6,6 +6,7 @@ import {
   BarChart3, ShieldCheck, Bell, Menu, X, LogOut,
   ChevronDown, ChevronRight, User, KeyRound, Settings, FilePlus,
   FileSearch, FileEdit, Upload, Eye, UserCog, History, UserPlus,
+  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { notificationsApi } from "../api/notifications";
@@ -59,6 +60,13 @@ const NAV_CONFIG: NavEntry[] = [
     label: "Requester Management",
     icon: <Scale size={16} />,
     children: [
+      {
+        kind: "leaf",
+        to: "/app/case-requests",
+        label: "New Case Requests",
+        icon: <ClipboardList size={15} />,
+        permission: "case:create",
+      },
       {
         kind: "leaf",
         to: "/app/cases/new",

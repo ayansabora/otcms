@@ -87,6 +87,7 @@ export interface Case {
   priority: CasePriority;
   description: string;
   location?: string | null;
+  isRequest: boolean;
   minWitnessesRequired: number;
   createdAt: string;
   updatedAt: string;
