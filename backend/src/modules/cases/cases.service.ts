@@ -410,9 +410,11 @@ export const casesService = {
       if (caller.permissions.includes("case:view_assigned")) {
         params.onlyAssignedToUserId = caller.userId;
       } else if (caller.permissions.includes("case:view_own")) {
+        // Community members see cases where they are a registered party
+        // (COMPLAINANT or RESPONDENT), not just cases they submitted.
         const member = await communityMembersRepository.findByUserId(caller.userId);
         if (!member) return paginate([], 0, pagination);
-        params.onlySubmittedByUserId = caller.userId;
+        params.partyMemberId = member.id;
       } else {
         throw new ForbiddenError("You do not have permission to list cases");
       }

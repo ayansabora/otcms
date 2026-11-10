@@ -94,6 +94,7 @@ export interface Case {
   parties: CaseParty[];
   assignments: CaseAssignment[];
   witnesses?: CaseWitness[];
+  hearings?: { id: string; startTime: string; endTime: string; location: string; status: string }[];
 }
 
 export interface CaseHistoryEntry {

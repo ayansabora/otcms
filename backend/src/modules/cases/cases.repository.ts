@@ -195,6 +195,7 @@ export const casesRepository = {
     dateTo?: Date;
     onlyAssignedToUserId?: string;
     onlySubmittedByUserId?: string;
+    partyMemberId?: string;
     isRequest?: boolean;
   }) {
     const where: Prisma.CaseWhereInput = { archivedAt: null };
@@ -216,6 +217,10 @@ export const casesRepository = {
       where.assignments = { some: { userId: params.onlyAssignedToUserId, removedAt: null } };
     }
     if (params.onlySubmittedByUserId) where.submittedByUserId = params.onlySubmittedByUserId;
+    // Filter to cases where this community member is a party (COMPLAINANT or RESPONDENT)
+    if (params.partyMemberId) {
+      where.parties = { some: { communityMemberId: params.partyMemberId } };
+    }
 
     const [items, total] = await prisma.$transaction([
       prisma.case.findMany({ where, skip: params.skip, take: params.take, orderBy: { createdAt: "desc" }, ...caseWithRelations }),
