@@ -151,6 +151,7 @@ export const casesService = {
     }
 
     return { case: createdCase, duplicateWarning };
+  },
 
   async getByIdForCaller(id: string, caller: CallerContext) {
     const found = await casesRepository.findById(id);
