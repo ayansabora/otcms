@@ -33,6 +33,7 @@ export function SubmitCaseRequestPage() {
 
   // Section 1 — Dispute information
   const [caseType,    setCaseType]    = useState<CaseType>("OTHER");
+  const [title,       setTitle]      = useState("");
   const [location,    setLocation]    = useState("");
   const [description, setDescription] = useState("");
 
@@ -41,6 +42,11 @@ export function SubmitCaseRequestPage() {
   const [oppPhone,   setOppPhone]   = useState("");
   const [oppKebele,  setOppKebele]  = useState("");
   const [oppAddress, setOppAddress] = useState("");
+
+  // Section 4 — Witnesses (optional)
+  const [witName,        setWitName]        = useState("");
+  const [witPhone,       setWitPhone]       = useState("");
+  const [witRelationship, setWitRelationship] = useState("");
 
   // Section 5 — Declaration
   const [declared, setDeclared] = useState(false);
@@ -77,6 +83,7 @@ export function SubmitCaseRequestPage() {
     try {
       const result = await casesApi.create({
         caseType,
+        title: title.trim() || undefined,
         description: description.trim(),
         location:    location.trim() || undefined,
         priority:    "NORMAL",
@@ -84,6 +91,13 @@ export function SubmitCaseRequestPage() {
         parties:     [],    // Record Officer links the parties during formal registration
         opposingParty: (oppName || oppPhone || oppKebele || oppAddress)
           ? { fullName: oppName || undefined, phone: oppPhone || undefined, kebele: oppKebele || undefined, address: oppAddress || undefined }
+          : undefined,
+        witnesses: witName.trim()
+          ? [{
+              fullName: witName.trim(),
+              phone: witPhone.trim() || undefined,
+              relationshipToCase: witRelationship.trim() || undefined,
+            }]
           : undefined,
       });
 
@@ -165,6 +179,13 @@ export function SubmitCaseRequestPage() {
             <Select label="Case Type" value={caseType} onChange={(e) => setCaseType(e.target.value as CaseType)} required>
               {CASE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </Select>
+
+            <Input
+              label="Dispute Title (optional)"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Brief title — e.g. Land boundary dispute with neighbor"
+            />
 
             <Input
               label="Location of Dispute (optional)"
@@ -281,6 +302,35 @@ export function SubmitCaseRequestPage() {
                 value={oppAddress}
                 onChange={(e) => setOppAddress(e.target.value)}
                 placeholder="Village or house address"
+              />
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Section 4 — Witnesses (optional) */}
+        <Card className="mb-4">
+          <CardHeader title="4. Witness Information (optional)" subtitle="Provide details of any known witnesses. Leave blank if not applicable." />
+          <CardBody className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Witness Full Name"
+                value={witName}
+                onChange={(e) => setWitName(e.target.value)}
+                placeholder="Name of a witness"
+              />
+              <Input
+                label="Witness Phone"
+                type="tel"
+                value={witPhone}
+                onChange={(e) => setWitPhone(e.target.value)}
+                placeholder="Phone number"
+              />
+              <Input
+                label="Relationship to Case"
+                value={witRelationship}
+                onChange={(e) => setWitRelationship(e.target.value)}
+                placeholder="e.g. Neighbour, Family member, Eyewitness"
+                className="sm:col-span-2"
               />
             </div>
           </CardBody>

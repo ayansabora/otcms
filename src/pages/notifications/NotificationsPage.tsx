@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCheck } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Bell, CheckCheck, ChevronRight, Scale, FileText, Calendar, Gavel, Info } from "lucide-react";
 import { notificationsApi } from "../../api/notifications";
 import { Button } from "../../components/Button";
 import { PageHeader } from "../../components/PageHeader";
@@ -8,6 +9,28 @@ import { Card } from "../../components/Card";
 import { SkeletonCard } from "../../components/LoadingSpinner";
 import { EmptyState } from "../../components/EmptyState";
 import { useToast } from "../../components/Toast";
+import type { Notification } from "../../types/api";
+
+/* ── Notification icon by type ─────────────────────────────────────────── */
+function notificationIcon(type: string) {
+  if (type.includes("hearing"))   return <Calendar size={16} className="text-[var(--color-info)]" />;
+  if (type.includes("decision"))  return <Gavel size={16} className="text-[var(--color-success)]" />;
+  if (type.includes("document"))  return <FileText size={16} className="text-[var(--color-primary)]" />;
+  if (type.includes("status"))    return <Scale size={16} className="text-[var(--color-warning)]" />;
+  return <Info size={16} className="text-[var(--color-muted)]" />;
+}
+
+/* ── Extract caseId from notification payload ─────────────────────────── */
+function getCaseId(n: Notification): string | null {
+  if (!n.payload) return null;
+  try {
+    const p = typeof n.payload === "string" ? JSON.parse(n.payload) : n.payload;
+    const obj = p as Record<string, unknown>;
+    return typeof obj.caseId === "string" ? obj.caseId : null;
+  } catch {
+    return null;
+  }
+}
 
 export function NotificationsPage() {
   const queryClient = useQueryClient();
@@ -24,13 +47,17 @@ export function NotificationsPage() {
     mutationFn: () => notificationsApi.markAllRead(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "dashboard-unread"] });
       toast.success("All notifications marked as read.");
     },
   });
 
   const markOneMutation = useMutation({
     mutationFn: (id: string) => notificationsApi.markRead(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "dashboard-unread"] });
+    },
   });
 
   const unreadCount = data?.items.filter((n) => !n.readAt).length ?? 0;
@@ -94,51 +121,72 @@ export function NotificationsPage() {
         <EmptyState
           icon={<Bell />}
           title="No notifications"
-          description={unreadOnly ? "You have no unread notifications." : "Notifications will appear here when events occur."}
-          culturalPattern
+          description={unreadOnly ? "You have no unread notifications." : "Notifications will appear here when events occur in your cases."}
         />
       )}
 
       {!isLoading && data && data.items.length > 0 && (
         <div className="space-y-2">
-          {data.items.map((n) => (
-            <Card
-              key={n.id}
-              hover
-              className={`transition-all ${n.readAt ? "opacity-70" : "border-l-4 border-l-[var(--color-primary)]"}`}
-            >
-              <div className="flex items-start gap-4 px-5 py-4">
-                {/* Unread dot */}
-                <div className="shrink-0 mt-1">
-                  {!n.readAt
-                    ? <div className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)]" />
-                    : <div className="w-2.5 h-2.5 rounded-full bg-transparent" />
-                  }
-                </div>
+          {data.items.map((n) => {
+            const caseId = getCaseId(n);
+            return (
+              <Card
+                key={n.id}
+                hover={!!caseId}
+                className={`transition-all ${n.readAt ? "opacity-70" : "border-l-4 border-l-[var(--color-primary)]"}`}
+              >
+                <div className="flex items-start gap-4 px-5 py-4">
+                  {/* Icon */}
+                  <div className="shrink-0 mt-0.5">
+                    {notificationIcon(n.type)}
+                  </div>
 
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${n.readAt ? "text-[var(--color-muted)]" : "font-semibold text-[var(--color-ink)]"}`}>
-                    {n.title}
-                  </p>
-                  {n.body && (
-                    <p className="text-xs text-[var(--color-muted)] mt-0.5 leading-relaxed">{n.body}</p>
+                  <div className="flex-1 min-w-0">
+                    {caseId ? (
+                      <Link
+                        to={`/app/cases/${caseId}`}
+                        onClick={() => { if (!n.readAt) markOneMutation.mutate(n.id); }}
+                        className="block"
+                      >
+                        <p className={`text-sm ${n.readAt ? "text-[var(--color-muted)]" : "font-semibold text-[var(--color-ink)] hover:text-[var(--color-primary)]"}`}>
+                          {n.title}
+                        </p>
+                        {n.body && (
+                          <p className="text-xs text-[var(--color-muted)] mt-0.5 leading-relaxed">{n.body}</p>
+                        )}
+                        <p className="text-xs text-[var(--color-faint)] mt-2 flex items-center gap-1">
+                          {timeAgo(n.createdAt)}
+                          <ChevronRight size={11} className="text-[var(--color-primary)]" />
+                          <span className="text-[var(--color-primary)] hover:underline">View case</span>
+                        </p>
+                      </Link>
+                    ) : (
+                      <>
+                        <p className={`text-sm ${n.readAt ? "text-[var(--color-muted)]" : "font-semibold text-[var(--color-ink)]"}`}>
+                          {n.title}
+                        </p>
+                        {n.body && (
+                          <p className="text-xs text-[var(--color-muted)] mt-0.5 leading-relaxed">{n.body}</p>
+                        )}
+                        <p className="text-xs text-[var(--color-faint)] mt-2">{timeAgo(n.createdAt)}</p>
+                      </>
+                    )}
+                  </div>
+
+                  {!n.readAt && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => markOneMutation.mutate(n.id)}
+                      className="shrink-0 text-xs"
+                    >
+                      Mark read
+                    </Button>
                   )}
-                  <p className="text-xs text-[var(--color-faint)] mt-2">{timeAgo(n.createdAt)}</p>
                 </div>
-
-                {!n.readAt && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => markOneMutation.mutate(n.id)}
-                    className="shrink-0 text-xs"
-                  >
-                    Mark read
-                  </Button>
-                )}
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
 
