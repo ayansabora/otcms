@@ -39,7 +39,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
   COURT_MANAGER: [
     "member:verify", "member:view",
-    "case:view_assigned", "case:transition",
+    "case:view_all", "case:view_assigned", "case:transition",
     "hearing:manage",
     "decision:record", "decision:approve",
     "document:upload", "document:read", "report:generate",
@@ -51,6 +51,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "member:register", "member:view",
     "case:create", "case:view_all", "case:update", "case:transition", "case:assign",
     "hearing:manage",
+    "decision:record", "decision:approve",
     "document:upload", "document:read", "report:generate",
     "summons:manage", "summons:read",
     "consent:manage", "consent:read",

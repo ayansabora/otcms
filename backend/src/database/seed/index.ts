@@ -63,6 +63,33 @@ async function main() {
       { email: "officer@otcms.local" },
       "DEMO Record Officer account seeded — development only. Set SEED_OFFICER_PASSWORD, and never seed demo accounts in production.",
     );
+
+    // ── DEMO COURT_MANAGER account — development/testing only ────────────
+    const managerPassword = process.env.SEED_MANAGER_PASSWORD ?? "Manager12345!";
+    const managerHash     = await hashPassword(managerPassword);
+
+    const managerUser = await prisma.user.upsert({
+      where: { email: "manager@otcms.local" },
+      update: {},
+      create: {
+        email:        "manager@otcms.local",
+        passwordHash: managerHash,
+        fullName:     "Demo Court Manager",
+        status:       "ACTIVE",
+      },
+    });
+
+    const managerRole = await prisma.role.findUniqueOrThrow({ where: { name: "COURT_MANAGER" } });
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: managerUser.id, roleId: managerRole.id } },
+      update: {},
+      create: { userId: managerUser.id, roleId: managerRole.id },
+    });
+
+    logger.warn(
+      { email: "manager@otcms.local" },
+      "DEMO Court Manager account seeded — development only. Set SEED_MANAGER_PASSWORD.",
+    );
   }
 
   logger.info("Seed complete.");
