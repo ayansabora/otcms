@@ -4,6 +4,7 @@ import { casesService } from "../cases/cases.service.js";
 import { notify } from "../notifications/notifications.service.js";
 import { NotFoundError, ConflictError, ValidationError } from "../../utils/appError.js";
 import { recordAudit } from "../audit/audit.service.js";
+import { assertValidTransition } from "../cases/case.workflow.js";
 import { toSkipTake, paginate, type PaginationInput } from "../../utils/pagination.js";
 import type {
   ScheduleHearingInput,
@@ -83,6 +84,32 @@ export const hearingsService = {
         body: `${input.startTime.toLocaleString()} at ${input.location}`,
         data: { caseId: input.caseId, hearingId: hearing.id },
       });
+    }
+
+    // ── Auto-transition case to HEARING_SCHEDULED when first hearing is
+    // created. The case must be in ASSIGNED status for this to apply.
+    if (caseRecord.status === "ASSIGNED") {
+      try {
+        assertValidTransition("ASSIGNED", "HEARING_SCHEDULED");
+        await casesRepository.updateStatus(input.caseId, "HEARING_SCHEDULED");
+        await casesRepository.addHistoryEntry({
+          caseId: input.caseId,
+          fromStatus: "ASSIGNED",
+          toStatus: "HEARING_SCHEDULED",
+          actorUserId,
+          note: `Hearing scheduled for ${input.startTime.toLocaleString()} at ${input.location}.`,
+        });
+        await recordAudit({
+          actorUserId,
+          action: "case.status_changed",
+          entityType: "case",
+          entityId: input.caseId,
+          before: { status: "ASSIGNED" },
+          after: { status: "HEARING_SCHEDULED" },
+        });
+      } catch {
+        // If transition is invalid for some reason, do not block the hearing creation
+      }
     }
 
     return hearingsRepository.findById(hearing.id);
@@ -165,6 +192,77 @@ export const hearingsService = {
       before: { status: hearing.status },
       after: { status: input.status },
     });
+
+    // ── Auto-transition the case to DECISION_PENDING when a hearing is
+    // completed. This connects the hearing workflow to the decision
+    // recording workflow so that eligible cases automatically appear on
+    // the Record Decision page without manual status changes.
+    if (input.status === "COMPLETED" && hearing.caseId) {
+      const caseRecord = await casesRepository.findById(hearing.caseId);
+      if (caseRecord && caseRecord.status === "HEARING_IN_PROGRESS") {
+        // Validate the transition is allowed (it should be per the workflow)
+        assertValidTransition("HEARING_IN_PROGRESS", "DECISION_PENDING");
+
+        await casesRepository.updateStatus(hearing.caseId, "DECISION_PENDING");
+        await casesRepository.addHistoryEntry({
+          caseId: hearing.caseId,
+          fromStatus: "HEARING_IN_PROGRESS",
+          toStatus: "DECISION_PENDING",
+          actorUserId,
+          note: `Hearing completed — case is now ready for decision recording.`,
+        });
+
+        await recordAudit({
+          actorUserId,
+          action: "case.status_changed",
+          entityType: "case",
+          entityId: hearing.caseId,
+          before: { status: "HEARING_IN_PROGRESS" },
+          after: { status: "DECISION_PENDING" },
+        });
+
+        // Notify assigned panel members that the case is ready for a decision
+        const panelUserIds = caseRecord.assignments
+          .filter((a) => !a.removedAt)
+          .map((a) => a.userId);
+        for (const userId of panelUserIds) {
+          await notify({
+            userId,
+            type: "case_ready_for_decision",
+            title: `Case ${caseRecord.caseNumber} is ready for a decision`,
+            body: `The hearing has been completed. Please record your decision in the system.`,
+            data: { caseId: hearing.caseId, hearingId: id },
+          });
+        }
+      }
+    }
+
+    // ── Auto-transition the case to HEARING_IN_PROGRESS when a hearing
+    // starts, so the case status reflects the active hearing session.
+    if (input.status === "IN_PROGRESS" && hearing.caseId) {
+      const caseRecord = await casesRepository.findById(hearing.caseId);
+      if (caseRecord && caseRecord.status === "HEARING_SCHEDULED") {
+        assertValidTransition("HEARING_SCHEDULED", "HEARING_IN_PROGRESS");
+
+        await casesRepository.updateStatus(hearing.caseId, "HEARING_IN_PROGRESS");
+        await casesRepository.addHistoryEntry({
+          caseId: hearing.caseId,
+          fromStatus: "HEARING_SCHEDULED",
+          toStatus: "HEARING_IN_PROGRESS",
+          actorUserId,
+          note: `Hearing session started.`,
+        });
+
+        await recordAudit({
+          actorUserId,
+          action: "case.status_changed",
+          entityType: "case",
+          entityId: hearing.caseId,
+          before: { status: "HEARING_SCHEDULED" },
+          after: { status: "HEARING_IN_PROGRESS" },
+        });
+      }
+    }
 
     return updated;
   },

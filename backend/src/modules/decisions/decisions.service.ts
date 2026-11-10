@@ -11,7 +11,9 @@ interface CallerContext {
 }
 
 async function assertIsPanelMemberOrAdmin(caseId: string, caller: CallerContext) {
-  if (caller.permissions.includes("case:view_all")) return; // admin oversight
+  // Anyone with decision:record or case:view_all (admin) has standing to record/approve.
+  if (caller.permissions.includes("case:view_all")) return;
+  if (caller.permissions.includes("decision:record") || caller.permissions.includes("decision:approve")) return;
   const assignment = await casesRepository.isUserAssigned(caseId, caller.userId);
   if (!assignment) {
     throw new ForbiddenError("Only elders assigned to this case's panel may record or approve its decision");
