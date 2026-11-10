@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Plus, Search, ChevronLeft, ChevronRight, Scale } from "lucide-react";
+import { Plus, Search, ChevronLeft, ChevronRight, Scale, ClipboardList } from "lucide-react";
 import { casesApi } from "../../api/cases";
 import { useAuth } from "../../auth/AuthContext";
 import { StatusBadge, PriorityBadge } from "../../components/StatusBadge";
@@ -26,11 +26,27 @@ export function CasesListPage() {
   const [status, setStatus]   = useState<CaseStatus | "">("");
   const [caseType, setCaseType] = useState<CaseType | "">("");
 
+  // Only show formally registered cases (isRequest: false).
+  // Community member requests are managed separately in /app/case-requests.
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["cases", { page, search, status, caseType }],
-    queryFn: () => casesApi.list({ page, pageSize: 20,
-      search: search || undefined, status: status || undefined, caseType: caseType || undefined }),
+    queryFn: () => casesApi.list({
+      page, pageSize: 20,
+      isRequest: false,
+      search:   search   || undefined,
+      status:   status   || undefined,
+      caseType: caseType || undefined,
+    }),
   });
+
+  // Count pending community member requests so officers see the badge
+  const { data: requestsData } = useQuery({
+    queryKey: ["case-requests", "pending-count"],
+    queryFn: () => casesApi.list({ pageSize: 1, isRequest: true, status: "SUBMITTED" }),
+    enabled: !!user?.permissions.includes("case:create"),
+    staleTime: 60_000,
+  });
+  const pendingRequests = requestsData?.total ?? 0;
 
   const canCreate = user?.permissions.includes("case:create");
   const filterActive = !!(search || status || caseType);
@@ -48,6 +64,23 @@ export function CasesListPage() {
           </Link>
         ) : undefined}
       />
+
+      {/* Pending community member requests banner — shown to officers only */}
+      {canCreate && pendingRequests > 0 && (
+        <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[var(--color-warning)]/40 bg-[var(--color-warning-bg)] px-5 py-3.5">
+          <div className="flex items-center gap-3">
+            <ClipboardList size={16} className="text-[var(--color-warning-dark)] shrink-0" />
+            <p className="text-sm text-[var(--color-warning-dark)]">
+              <span className="font-semibold">{pendingRequests}</span> community member dispute request{pendingRequests !== 1 ? "s" : ""} awaiting review and formal registration.
+            </p>
+          </div>
+          <Link to="/app/case-requests">
+            <Button variant="secondary" size="sm">
+              Review Requests
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-5">

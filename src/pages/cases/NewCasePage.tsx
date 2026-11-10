@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Scale, MapPin, FileText, Users, UserPlus, Trash2,
   Info, CheckCircle2, ChevronRight, ChevronLeft,
@@ -16,6 +16,7 @@ import { AlertMessage } from "../../components/ErrorMessage";
 import { Badge } from "../../components/Badge";
 import { Tabs, TabPanel } from "../../components/Tabs";
 import { useAuth } from "../../auth/AuthContext";
+import { useToast } from "../../components/Toast";
 import type { CaseType, CommunityMember } from "../../types/api";
 
 /* ─── constants ─────────────────────────────────────────────────────────── */
@@ -187,6 +188,7 @@ export function NewCasePage() {
   const navigate    = useNavigate();
   const queryClient = useQueryClient();
   const { user }    = useAuth();
+  const toast       = useToast();
   const [searchParams] = useSearchParams();
   const fromRequestId  = searchParams.get("fromRequest") ?? undefined;
   const [activeTab, setActiveTab] = useState("case");
@@ -231,7 +233,6 @@ export function NewCasePage() {
   // ── UI ────────────────────────────────────────────────────────────────
   const [error,            setError]            = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
-  const [submitting,       setSubmitting]        = useState(false);
 
   // ── Members query — only fires once auth is confirmed ────────────────
   const { data: membersData, isLoading, isError, refetch } = useQuery({
@@ -278,13 +279,43 @@ export function NewCasePage() {
     return null;
   }
 
+  // ── Mutation ──────────────────────────────────────────────────────────
+  const registerMutation = useMutation({
+    mutationFn: casesApi.create,
+    onSuccess: (result) => {
+      // Invalidate both the cases list and community-members cache
+      queryClient.invalidateQueries({ queryKey: ["cases"] });
+      queryClient.invalidateQueries({ queryKey: ["community-members"] });
+
+      if (result.duplicateWarning) {
+        setDuplicateWarning(result.duplicateWarning);
+        toast.warning(result.duplicateWarning);
+        setTimeout(() => navigate(`/app/cases/${result.case.id}`), 3500);
+      } else {
+        toast.success(`Case ${result.case.caseNumber} registered successfully.`);
+        navigate(`/app/cases/${result.case.id}`);
+      }
+    },
+    onError: (err) => {
+      const msg = err instanceof ApiError ? err.message : "Could not register the case. Please try again.";
+      setError(msg);
+    },
+  });
+
   // ── Submit ────────────────────────────────────────────────────────────
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null); setDuplicateWarning(null);
 
     const validationError = validate();
-    if (validationError) { setError(validationError); return; }
+    if (validationError) {
+      setError(validationError);
+      // If the error is about parties/description, jump to the relevant tab
+      if (validationError.includes("description")) setActiveTab("case");
+      else if (validationError.includes("complainant")) setActiveTab("plaintiff");
+      else if (validationError.includes("respondent"))  setActiveTab("defendant");
+      return;
+    }
 
     const parties = [
       ...complainants.filter(Boolean).map((id) => ({ communityMemberId: id, roleInCase: "COMPLAINANT" as const })),
@@ -302,34 +333,20 @@ export function NewCasePage() {
         testimonySummary:   w.testimonySummary || undefined,
       }));
 
-    setSubmitting(true);
-    try {
-      const result = await casesApi.create({
-        caseType,
-        title:             title || undefined,
-        description,
-        location:          location || undefined,
-        priority:          priority as "LOW" | "NORMAL" | "HIGH" | "URGENT",
-        jurisdictionBasis: jurisdictionBasis || undefined,
-        parties,
-        witnesses:         witnessPayload.length > 0 ? witnessPayload : undefined,
-      });
-
-      // Invalidate member cache so updated member list is fresh
-      queryClient.invalidateQueries({ queryKey: ["community-members"] });
-
-      if (result.duplicateWarning) {
-        setDuplicateWarning(result.duplicateWarning);
-        setTimeout(() => navigate(`/app/cases/${result.case.id}`), 3500);
-      } else {
-        navigate(`/app/cases/${result.case.id}`);
-      }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not register the case. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+    registerMutation.mutate({
+      caseType,
+      title:              title || undefined,
+      description,
+      location:           location || undefined,
+      priority:           priority as "LOW" | "NORMAL" | "HIGH" | "URGENT",
+      jurisdictionBasis:  jurisdictionBasis || undefined,
+      registrationNotes:  notes || undefined,
+      parties,
+      witnesses:          witnessPayload.length > 0 ? witnessPayload : undefined,
+    });
   }
+
+  const submitting = registerMutation.isPending;
 
   // ── Tab navigation helpers ────────────────────────────────────────────
   const TAB_IDS = TABS.map((t) => t.id);

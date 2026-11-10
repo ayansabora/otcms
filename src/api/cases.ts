@@ -8,6 +8,7 @@ export interface CreateCaseInput {
   location?: string;
   priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
   jurisdictionBasis?: string;
+  registrationNotes?: string;
   isRequest?: boolean;
   opposingParty?: {
     fullName?: string;
