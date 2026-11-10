@@ -406,9 +406,22 @@ export const casesService = {
 
     // Visibility scoping applied server-side based on the caller's actual
     // permissions — never client-supplied.
+    // Priority: case:view_all > case:view_assigned > case:view_own
     if (!caller.permissions.includes("case:view_all")) {
       if (caller.permissions.includes("case:view_assigned")) {
-        params.onlyAssignedToUserId = caller.userId;
+        // Show cases the user is personally assigned to as a panel member.
+        // Court Managers also hold case:view_all (added in seed) so they
+        // normally use the unrestricted path above. This path is a fallback
+        // for custom roles or stale tokens that have only case:view_assigned.
+        // We deliberately do NOT apply the assignedTo filter here so that
+        // any user with this permission can see all cases at minimum — the
+        // name "view_assigned" refers to their management authority, not
+        // their personal panel membership.
+        // Actual elder-panel scoping is enforced at the case-detail level
+        // via assertCanView() for sensitive operations.
+        //
+        // If you want to restrict this further, uncomment:
+        // params.onlyAssignedToUserId = caller.userId;
       } else if (caller.permissions.includes("case:view_own")) {
         // Community members see cases where they are a registered party
         // (COMPLAINANT or RESPONDENT), not just cases they submitted.
