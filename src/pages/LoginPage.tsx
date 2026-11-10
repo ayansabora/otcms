@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ArrowRight, Lock, Mail } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { ApiError } from "../api/client";
+import { LanguageSelector } from "../components/LanguageSelector";
+import { useTranslation } from "react-i18next";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    OTCMS Cultural Emblem — Shield-shaped badge with Abbaa Gadaa figure,
@@ -175,6 +177,7 @@ function CulturalBackground() {
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -190,7 +193,7 @@ export function LoginPage() {
       await login(email, password);
       navigate("/app");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to sign in. Please check your credentials.");
+      setError(err instanceof ApiError ? err.message : t("auth.invalidCredentials"));
     } finally {
       setSubmitting(false);
     }
@@ -237,18 +240,15 @@ export function LoginPage() {
 
             {/* Afaan Oromo welcome */}
             <p className="font-display text-2xl text-[#E8C84A] mb-2 tracking-wide italic">
-              Baga Nagaa Dhuftan!
+              {t("auth.bagaNagaa")}
             </p>
 
             <h1 className="font-display text-2xl xl:text-[2rem] text-white leading-[1.25] mb-4 max-w-lg">
-              Oromo Traditional Court
-              <br />
-              <span className="text-[#E8C84A]">Management System</span>
+              {t("common.fullName")}
             </h1>
 
             <p className="text-white/55 text-[15px] leading-relaxed max-w-md mb-6">
-              Preserving Oromo cultural heritage, strengthening traditional justice,
-              and promoting community reconciliation through modern digital technology.
+              {t("auth.tagline")}
             </p>
 
             {/* Gadaa pillars */}
@@ -307,15 +307,20 @@ export function LoginPage() {
 
           {/* ── Mobile-only name (hidden on desktop where left panel shows) */}
           <div className="lg:hidden text-center mb-4">
-            <p className="font-display text-sm text-[#C9A227] italic">Baga Nagaa Dhuftan!</p>
+            <p className="font-display text-sm text-[#C9A227] italic">{t("auth.bagaNagaa")}</p>
           </div>
 
           {/* ── Login card ────────────────────────────────────────────── */}
           <div className="login-card-enter">
+            {/* Language selector */}
+            <div className="flex justify-end mb-5">
+              <LanguageSelector />
+            </div>
+
             {/* Heading */}
-            <h2 className="font-display text-[1.6rem] text-[#2A1012] mb-1">Welcome back</h2>
+            <h2 className="font-display text-[1.6rem] text-[#2A1012] mb-1">{t("auth.welcomeBack")}</h2>
             <p className="text-sm text-[#8B5E3C] mb-7">
-              Sign in to access the Oromo Traditional Court Management System.
+              {t("auth.signInSubtitle")}
             </p>
 
             {/* Error alert */}
@@ -330,7 +335,7 @@ export function LoginPage() {
               {/* Email */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-[#2A1012] mb-1.5">
-                  Email address
+                  {t("auth.emailAddress")}
                 </label>
                 <div className="relative group">
                   <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#4A1518] transition-colors" />
@@ -341,7 +346,7 @@ export function LoginPage() {
                     autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
+                    placeholder={t("auth.emailPlaceholder")}
                     className="w-full rounded-lg border border-[#E5DDD0] bg-white pl-10 pr-4 py-3 text-sm text-[#2A1012] placeholder:text-gray-400 outline-none focus:border-[#4A1518] focus:ring-2 focus:ring-[#4A1518]/10 transition-all"
                   />
                 </div>
@@ -351,10 +356,10 @@ export function LoginPage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label htmlFor="password" className="block text-sm font-medium text-[#2A1012]">
-                    Password
+                    {t("auth.password")}
                   </label>
                   <a href="#" className="text-xs text-[#4A1518] hover:text-[#6B1F23] hover:underline transition-colors">
-                    Forgot password?
+                    {t("auth.forgotPassword")}
                   </a>
                 </div>
                 <div className="relative group">
@@ -373,7 +378,7 @@ export function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#8B5E3C] transition-colors"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -388,7 +393,7 @@ export function LoginPage() {
                   onChange={(e) => setRemember(e.target.checked)}
                   className="w-4 h-4 rounded border-[#E5DDD0] accent-[#4A1518] cursor-pointer"
                 />
-                <span className="text-sm text-[#8B5E3C]">Remember me</span>
+                <span className="text-sm text-[#8B5E3C]">{t("auth.rememberMe")}</span>
               </label>
 
               {/* Submit button — deep burgundy with gold hover */}
@@ -400,11 +405,11 @@ export function LoginPage() {
                 {submitting ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing in…
+                    {t("auth.signingIn")}
                   </>
                 ) : (
                   <>
-                    Sign In
+                    {t("auth.signIn")}
                     <ArrowRight size={17} />
                   </>
                 )}
@@ -414,9 +419,9 @@ export function LoginPage() {
             {/* Security note */}
             <div className="mt-8 flex items-center justify-center gap-2 text-xs text-gray-400">
               <Lock size={11} />
-              <span>Secure Access</span>
+              <span>{t("auth.secureAccess")}</span>
               <span className="text-gray-300">|</span>
-              <span>Authorized Users Only</span>
+              <span>{t("auth.authorizedOnly")}</span>
             </div>
           </div>
 

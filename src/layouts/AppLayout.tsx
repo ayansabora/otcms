@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { notificationsApi } from "../api/notifications";
+import { LanguageSelector } from "../components/LanguageSelector";
+import { useTranslation } from "react-i18next";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Types
@@ -48,7 +50,7 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "leaf",
     to: "/app",
-    label: "Dashboard",
+    label: "nav.dashboard",
     icon: <LayoutDashboard size={16} />,
     end: true,
   },
@@ -57,34 +59,34 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "group",
     id: "cases",
-    label: "Requester Management",
+    label: "nav.requesterManagement",
     icon: <Scale size={16} />,
     children: [
       {
         kind: "leaf",
         to: "/app/case-requests",
-        label: "New Case Requests",
+        label: "nav.newCaseRequests",
         icon: <ClipboardList size={15} />,
         permission: "case:create",
       },
       {
         kind: "leaf",
         to: "/app/cases/new",
-        label: "Register Case",
+        label: "nav.registerCase",
         icon: <FilePlus size={15} />,
         permission: "case:create",
       },
       {
         kind: "leaf",
         to: "/app/cases",
-        label: "View All Cases",
+        label: "nav.viewAllCases",
         icon: <FileSearch size={15} />,
         permission: "case:view_all",
       },
       {
         kind: "leaf",
         to: "/app/cases",
-        label: "Assigned Cases",
+        label: "nav.assignedCases",
         icon: <FileEdit size={15} />,
         permission: "case:view_assigned",
       },
@@ -95,27 +97,27 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "group",
     id: "party-management",
-    label: "Party Management",
+    label: "nav.partyManagement",
     icon: <Users size={16} />,
     children: [
       {
         kind: "leaf",
         to: "/app/plaintiffs",
-        label: "Plaintiffs",
+        label: "nav.plaintiffs",
         icon: <Users size={15} />,
         permission: "case:view_all",
       },
       {
         kind: "leaf",
         to: "/app/defendants",
-        label: "Defendants",
+        label: "nav.defendants",
         icon: <Users size={15} />,
         permission: "case:view_all",
       },
       {
         kind: "leaf",
         to: "/app/witnesses",
-        label: "Witnesses",
+        label: "nav.witnesses",
         icon: <UserPlus size={15} />,
         permission: "case:view_all",
       },
@@ -126,20 +128,20 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "group",
     id: "my-cases-group",
-    label: "My Cases",
+    label: "nav.myCases",
     icon: <Scale size={16} />,
     children: [
       {
         kind: "leaf",
         to: "/app/my-cases",
-        label: "My Cases",
+        label: "nav.myCases",
         icon: <FileSearch size={15} />,
         permission: "case:view_own",
       },
       {
         kind: "leaf",
         to: "/app/case-request",
-        label: "Submit Case Request",
+        label: "nav.submitCaseRequest",
         icon: <FilePlus size={15} />,
         permission: "case:view_own",
       },
@@ -150,20 +152,20 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "group",
     id: "hearings",
-    label: "Hearings",
+    label: "nav.hearings",
     icon: <Calendar size={16} />,
     children: [
       {
         kind: "leaf",
         to: "/app/hearings/schedule",
-        label: "Schedule Hearing",
+        label: "nav.scheduleHearing",
         icon: <FilePlus size={15} />,
         permission: "hearing:manage",
       },
       {
         kind: "leaf",
         to: "/app/hearings",
-        label: "View Hearings",
+        label: "nav.viewHearings",
         icon: <Eye size={15} />,
         permission: "case:view_all",
       },
@@ -174,20 +176,20 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "group",
     id: "decisions",
-    label: "Decisions",
+    label: "nav.decisions",
     icon: <ScrollText size={16} />,
     children: [
       {
         kind: "leaf",
         to: "/app/decisions/record",
-        label: "Record Decision",
+        label: "nav.recordDecision",
         icon: <FilePlus size={15} />,
         permission: "decision:record",
       },
       {
         kind: "leaf",
         to: "/app/decisions",
-        label: "View Decisions",
+        label: "nav.viewDecisions",
         icon: <Eye size={15} />,
         permission: "decision:record",
       },
@@ -198,20 +200,20 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "group",
     id: "community",
-    label: "Community",
+    label: "nav.community",
     icon: <Users size={16} />,
     children: [
       {
         kind: "leaf",
         to: "/app/members/new",
-        label: "Register Member",
+        label: "nav.registerMember",
         icon: <FilePlus size={15} />,
         permission: "member:register",
       },
       {
         kind: "leaf",
         to: "/app/members",
-        label: "View Members",
+        label: "nav.viewMembers",
         icon: <Eye size={15} />,
         permission: "member:view",
       },
@@ -222,20 +224,20 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "group",
     id: "documents",
-    label: "Documents",
+    label: "nav.documents",
     icon: <FolderOpen size={16} />,
     children: [
       {
         kind: "leaf",
         to: "/app/documents",
-        label: "Upload Document",
+        label: "nav.uploadDocument",
         icon: <Upload size={15} />,
         permission: "document:upload",
       },
       {
         kind: "leaf",
         to: "/app/documents",
-        label: "View Documents",
+        label: "nav.viewDocuments",
         icon: <Eye size={15} />,
         permission: "document:read",
       },
@@ -246,7 +248,7 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "leaf",
     to: "/app/notifications",
-    label: "Notifications",
+    label: "nav.notifications",
     icon: <Bell size={16} />,
   },
 
@@ -254,7 +256,7 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "leaf",
     to: "/app/reports",
-    label: "Reports",
+    label: "nav.reports",
     icon: <BarChart3 size={16} />,
     permission: "report:generate",
   },
@@ -263,34 +265,34 @@ const NAV_CONFIG: NavEntry[] = [
   {
     kind: "group",
     id: "admin",
-    label: "Administration",
+    label: "nav.administration",
     icon: <ShieldCheck size={16} />,
     children: [
       {
         kind: "leaf",
         to: "/app/users",
-        label: "User Management",
+        label: "nav.userManagement",
         icon: <UserCog size={15} />,
         permission: "user:manage",
       },
       {
         kind: "leaf",
         to: "/app/role-management",
-        label: "Role Management",
+        label: "nav.roleManagement",
         icon: <ShieldCheck size={15} />,
         permission: "role:manage",
       },
       {
         kind: "leaf",
         to: "/app/audit-logs",
-        label: "Audit Logs",
+        label: "nav.auditLogs",
         icon: <History size={15} />,
         permission: "audit:read",
       },
       {
         kind: "leaf",
         to: "/app/settings",
-        label: "System Settings",
+        label: "nav.systemSettings",
         icon: <Settings size={15} />,
         permission: "user:manage",
       },
@@ -439,6 +441,7 @@ interface NavGroupItemProps {
 function NavGroupItem({ group, defaultOpen, onClose }: NavGroupItemProps) {
   const [open, setOpen] = useState(defaultOpen);
   const location = useLocation();
+  const { t } = useTranslation();
 
   // Re-open automatically when navigating to a child route
   useEffect(() => {
@@ -470,7 +473,7 @@ function NavGroupItem({ group, defaultOpen, onClose }: NavGroupItemProps) {
         aria-expanded={open}
       >
         <span className="shrink-0">{group.icon}</span>
-        <span className="flex-1 text-left truncate font-medium">{group.label}</span>
+        <span className="flex-1 text-left truncate font-medium">{t(group.label)}</span>
         <ChevronRight
           size={14}
           className={`shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""} ${groupActive ? "text-white/80" : "text-white/35"}`}
@@ -499,7 +502,7 @@ function NavGroupItem({ group, defaultOpen, onClose }: NavGroupItemProps) {
               }
             >
               <span className="shrink-0 opacity-75">{child.icon}</span>
-              <span className="truncate">{child.label}</span>
+              <span className="truncate">{t(child.label)}</span>
             </NavLink>
           ))}
         </div>
@@ -532,6 +535,7 @@ function LogoMark() {
 ───────────────────────────────────────────────────────────────────────────── */
 export function AppLayout() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
@@ -585,7 +589,7 @@ export function AppLayout() {
                 }
               >
                 <span className="shrink-0">{entry.icon}</span>
-                <span className="truncate">{entry.label}</span>
+                <span className="truncate">{t(entry.label)}</span>
               </NavLink>
             );
           }
@@ -645,6 +649,8 @@ export function AppLayout() {
           </button>
           <div className="hidden lg:block" />
           <div className="flex items-center gap-1">
+            <LanguageSelector />
+            <div className="w-px h-6 bg-[var(--color-line)] mx-1" />
             <NotificationBell />
             <div className="w-px h-6 bg-[var(--color-line)] mx-2" />
             <UserMenu />

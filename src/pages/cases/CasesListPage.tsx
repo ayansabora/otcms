@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Plus, Search, ChevronLeft, ChevronRight, Scale, ClipboardList } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { casesApi } from "../../api/cases";
 import { useAuth } from "../../auth/AuthContext";
 import { StatusBadge, PriorityBadge } from "../../components/StatusBadge";
@@ -21,6 +22,7 @@ const CASE_TYPE_OPTIONS: CaseType[] = [
 
 export function CasesListPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [page, setPage]       = useState(1);
   const [search, setSearch]   = useState("");
   const [status, setStatus]   = useState<CaseStatus | "">("");
@@ -56,11 +58,11 @@ export function CasesListPage() {
   return (
     <div className="max-w-7xl">
       <PageHeader
-        title="Cases"
-        subtitle={data ? `${data.total} case${data.total === 1 ? "" : "s"} found` : undefined}
+        title={t("cases.title")}
+        subtitle={data ? t("cases.casesFound", { count: data.total }) : undefined}
         actions={canCreate ? (
           <Link to="/app/cases/new">
-            <Button leftIcon={<Plus size={15} />}>Register Case</Button>
+            <Button leftIcon={<Plus size={15} />}>{t("cases.registerCase")}</Button>
           </Link>
         ) : undefined}
       />
@@ -94,12 +96,12 @@ export function CasesListPage() {
           />
         </div>
         <select value={status} onChange={(e) => { setStatus(e.target.value as CaseStatus | ""); setPage(1); }} className={selectCls}>
-          <option value="">All Statuses</option>
-          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+          <option value="">{t("common.all")} {t("common.status")}</option>
+          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`cases.statuses.${s}`, { defaultValue: s.replace(/_/g, " ") })}</option>)}
         </select>
         <select value={caseType} onChange={(e) => { setCaseType(e.target.value as CaseType | ""); setPage(1); }} className={selectCls}>
-          <option value="">All Types</option>
-          {CASE_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t.replace(/_/g, " ")}</option>)}
+          <option value="">{t("common.all")} {t("cases.caseType")}</option>
+          {CASE_TYPE_OPTIONS.map((ct) => <option key={ct} value={ct}>{t(`cases.types.${ct}`, { defaultValue: ct.replace(/_/g, " ") })}</option>)}
         </select>
         {filterActive && (
           <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatus(""); setCaseType(""); setPage(1); }}>
@@ -122,8 +124,8 @@ export function CasesListPage() {
         {!isLoading && !isError && data?.items.length === 0 && (
           <EmptyState
             icon={<Scale />}
-            title="No cases found"
-            description={filterActive ? "No cases match your current filters." : "Register the first case to get started."}
+            title={t("cases.noInSystem")}
+            description={filterActive ? t("cases.noMatchFilters") : t("cases.registerFirst")}
             action={filterActive
               ? <Button variant="secondary" onClick={() => { setSearch(""); setStatus(""); setCaseType(""); }}>Clear Filters</Button>
               : canCreate ? <Link to="/app/cases/new"><Button leftIcon={<Plus size={15} />}>Register Case</Button></Link> : undefined
@@ -136,12 +138,12 @@ export function CasesListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[10px] text-[var(--color-muted)] uppercase tracking-wide bg-[var(--color-bg)] border-b border-[var(--color-line)]">
-                  <th className="px-5 py-3.5 font-semibold">Case No.</th>
-                  <th className="px-5 py-3.5 font-semibold">Type</th>
-                  <th className="px-5 py-3.5 font-semibold">Parties</th>
-                  <th className="px-5 py-3.5 font-semibold">Priority</th>
-                  <th className="px-5 py-3.5 font-semibold">Status</th>
-                  <th className="px-5 py-3.5 font-semibold">Registered</th>
+                  <th className="px-5 py-3.5 font-semibold">{t("cases.caseNumber")}</th>
+                  <th className="px-5 py-3.5 font-semibold">{t("cases.caseType")}</th>
+                  <th className="px-5 py-3.5 font-semibold">{t("cases.parties")}</th>
+                  <th className="px-5 py-3.5 font-semibold">{t("cases.priority")}</th>
+                  <th className="px-5 py-3.5 font-semibold">{t("common.status")}</th>
+                  <th className="px-5 py-3.5 font-semibold">{t("cases.registrationDate")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -156,7 +158,7 @@ export function CasesListPage() {
                         </Link>
                       </td>
                       <td className="px-5 py-4 text-[var(--color-muted)] text-xs capitalize">
-                        {c.caseType.replace(/_/g, " ").toLowerCase()}
+                        {t(`cases.types.${c.caseType}`, { defaultValue: c.caseType.replace(/_/g, " ").toLowerCase() })}
                       </td>
                       <td className="px-5 py-4">
                         <p className="text-xs text-[var(--color-ink)] font-medium">{complainant?.communityMember.fullName ?? "—"}</p>
