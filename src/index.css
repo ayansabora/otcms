@@ -121,6 +121,34 @@ h1, h2, h3, h4, .font-display { font-family: var(--font-display); }
   background-size: 40px 40px;
 }
 
+/* ─── Login page animations ─────────────────────────────────────────────── */
+@keyframes login-fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes login-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes login-scale-in {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.login-card-enter {
+  animation: login-scale-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.login-brand-enter {
+  animation: login-fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.login-bg-enter {
+  animation: login-fade-in 1.2s ease-out both;
+}
+
 /* ─── Fade-in animation ──────────────────────────────────────────────────── */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
