@@ -1,0 +1,92 @@
+<svg width="200" height="240" viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <defs>
+    <linearGradient id="shield-fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4A1518"/>
+      <stop offset="100%" stop-color="#2A0E10"/>
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E8C84A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </linearGradient>
+    <radialGradient id="figure-glow" cx="0.5" cy="0.35" r="0.5">
+      <stop offset="0%" stop-color="#E8C84A" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#C9A227" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Shield outline -->
+  <path d="M100 4 L196 28 L196 120 Q196 180 100 236 Q4 180 4 120 L4 28 Z"
+        fill="url(#shield-fill)" stroke="url(#gold-grad)" stroke-width="2.5"/>
+
+  <!-- Inner border -->
+  <path d="M100 14 L186 34 L186 118 Q186 172 100 222 Q14 172 14 118 L14 34 Z"
+        fill="none" stroke="#C9A227" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- Glow behind figure -->
+  <ellipse cx="100" cy="80" rx="60" ry="50" fill="url(#figure-glow)"/>
+
+  <!-- Abbaa Gadaa figure: dignified silhouette with traditional headwear and shawl -->
+  <!-- Head -->
+  <ellipse cx="100" cy="52" rx="14" ry="16" fill="url(#gold-grad)" opacity="0.9"/>
+  <!-- Traditional headwear (cap/turban) -->
+  <path d="M86 48 Q86 34 100 32 Q114 34 114 48 Q114 42 110 40 L90 40 Q86 42 86 48 Z"
+        fill="url(#gold-grad)"/>
+  <!-- Headwear top knot/decoration -->
+  <circle cx="100" cy="33" r="3" fill="#E8C84A"/>
+  <!-- Neck -->
+  <rect x="96" y="66" width="8" height="10" fill="url(#gold-grad)" opacity="0.7"/>
+  <!-- Shoulders with traditional shawl (draped cloth) -->
+  <path d="M70 82 Q70 76 76 74 L88 72 Q94 78 100 78 Q106 78 112 72 L124 74 Q130 76 130 82
+           L132 100 Q132 104 128 104 L72 104 Q68 104 68 100 Z"
+        fill="url(#gold-grad)" opacity="0.85"/>
+  <!-- Shawl drape lines -->
+  <path d="M82 82 L82 100 M92 82 L92 100 M108 82 L108 100 M118 82 L118 100"
+        stroke="#4A1518" stroke-width="0.6" opacity="0.3"/>
+  <!-- Staff of authority (right side) -->
+  <line x1="134" y1="60" x2="134" y2="100" stroke="#E8C84A" stroke-width="1.5" opacity="0.6"/>
+  <circle cx="134" cy="58" r="2.5" fill="#E8C84A" opacity="0.7"/>
+
+  <!-- Gadaa concentric circles (8-year cycle symbol) -->
+  <g transform="translate(100, 132)">
+    <circle r="22" fill="none" stroke="url(#gold-grad)" stroke-width="1" opacity="0.6"/>
+    <circle r="16" fill="none" stroke="url(#gold-grad)" stroke-width="0.8" opacity="0.5"/>
+    <circle r="10" fill="none" stroke="url(#gold-grad)" stroke-width="0.6" opacity="0.4"/>
+    <circle r="4" fill="none" stroke="url(#gold-grad)" stroke-width="0.5" opacity="0.3"/>
+    <!-- 8 spokes representing the Gadaa cycle -->
+    <g stroke="url(#gold-grad)" stroke-width="0.5" opacity="0.35">
+      <line x1="0" y1="-22" x2="0" y2="-26"/>
+      <line x1="15.5" y1="-15.5" x2="18.4" y2="-18.4"/>
+      <line x1="22" y1="0" x2="26" y2="0"/>
+      <line x1="15.5" y1="15.5" x2="18.4" y2="18.4"/>
+      <line x1="0" y1="22" x2="0" y2="26"/>
+      <line x1="-15.5" y1="15.5" x2="-18.4" y2="18.4"/>
+      <line x1="-22" y1="0" x2="-26" y2="0"/>
+      <line x1="-15.5" y1="-15.5" x2="-18.4" y2="-18.4"/>
+    </g>
+  </g>
+
+  <!-- Scales of justice at bottom -->
+  <g transform="translate(100, 180)">
+    <!-- Center post -->
+    <line x1="0" y1="-12" x2="0" y2="20" stroke="url(#gold-grad)" stroke-width="1.5" opacity="0.7"/>
+    <!-- Top -->
+    <circle cx="0" cy="-12" r="2.5" fill="url(#gold-grad)" opacity="0.8"/>
+    <!-- Crossbar -->
+    <line x1="-18" y1="-6" x2="18" y2="-6" stroke="url(#gold-grad)" stroke-width="1.2" opacity="0.6"/>
+    <!-- Left pan strings -->
+    <line x1="-18" y1="-6" x2="-22" y2="6" stroke="url(#gold-grad)" stroke-width="0.6" opacity="0.5"/>
+    <line x1="-18" y1="-6" x2="-14" y2="6" stroke="url(#gold-grad)" stroke-width="0.6" opacity="0.5"/>
+    <!-- Right pan strings -->
+    <line x1="18" y1="-6" x2="22" y2="6" stroke="url(#gold-grad)" stroke-width="0.6" opacity="0.5"/>
+    <line x1="18" y1="-6" x2="14" y2="6" stroke="url(#gold-grad)" stroke-width="0.6" opacity="0.5"/>
+    <!-- Pans -->
+    <path d="M-24 4 Q-18 10 -12 4" fill="none" stroke="url(#gold-grad)" stroke-width="1" opacity="0.5"/>
+    <path d="M12 4 Q18 10 24 4" fill="none" stroke="url(#gold-grad)" stroke-width="1" opacity="0.5"/>
+    <!-- Base -->
+    <line x1="-8" y1="20" x2="8" y2="20" stroke="url(#gold-grad)" stroke-width="1.5" opacity="0.7"/>
+  </g>
+
+  <!-- Bottom text area -->
+  <text x="100" y="214" text-anchor="middle" font-family="serif" font-size="11" font-weight="bold"
+        fill="url(#gold-grad)" letter-spacing="2">OTCMS</text>
+</svg>
