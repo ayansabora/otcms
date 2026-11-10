@@ -6,6 +6,7 @@ import { storageAdapter } from "./storage/index.js";
 import { matchesDeclaredType } from "../../utils/fileSignature.js";
 import { NotFoundError, ValidationError, ForbiddenError } from "../../utils/appError.js";
 import { recordAudit } from "../audit/audit.service.js";
+import { notify } from "../notifications/notifications.service.js";
 import { prisma } from "../../database/prismaClient.js";
 
 interface CallerContext {
@@ -68,6 +69,24 @@ export const documentsService = {
       entityId: doc.id,
       after: { filename: doc.filename, caseId: meta.caseId, decisionId: meta.decisionId },
     });
+
+    // Notify case parties (with user accounts) that a new document is available
+    if (caseId) {
+      const caseRecord = await casesRepository.findById(caseId);
+      if (caseRecord) {
+        for (const party of caseRecord.parties) {
+          if (party.communityMember.userId && party.communityMember.userId !== caller.userId) {
+            await notify({
+              userId: party.communityMember.userId,
+              type: "document_available",
+              title: `New document available: ${file.originalname}`,
+              body: `A new document has been added to your case ${caseRecord.caseNumber}.`,
+              data: { caseId, documentId: doc.id, filename: file.originalname },
+            });
+          }
+        }
+      }
+    }
 
     return doc;
   },

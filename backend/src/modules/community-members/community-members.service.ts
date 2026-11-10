@@ -1,6 +1,8 @@
 import { communityMembersRepository } from "./community-members.repository.js";
 import { NotFoundError, ConflictError } from "../../utils/appError.js";
 import { recordAudit } from "../audit/audit.service.js";
+import { notify } from "../notifications/notifications.service.js";
+import { prisma } from "../../database/prismaClient.js";
 import { toSkipTake, paginate, type PaginationInput } from "../../utils/pagination.js";
 import type {
   RegisterMemberInput,
@@ -31,6 +33,24 @@ export const communityMembersService = {
       entityId:   member.id,
       after:      { fullName: member.fullName },
     });
+
+    // Notify all ADMINs about the new community member registration
+    if (actorUserId) {
+      const admins = await prisma.user.findMany({
+        where: { status: "ACTIVE", archivedAt: null, roles: { some: { role: { name: "ADMIN" } } } },
+        select: { id: true },
+      });
+      for (const admin of admins) {
+        await notify({
+          userId: admin.id,
+          type: "member_registered",
+          title: `New community member registered: ${member.fullName}`,
+          body: `A new community member has been registered${member.kebele ? ` from Kebele ${member.kebele}` : ""}.`,
+          data: { memberId: member.id, fullName: member.fullName },
+        });
+      }
+    }
+
     return member;
   },
 

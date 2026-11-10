@@ -4,6 +4,7 @@ import { usersRepository, rolesRepository } from "./users.repository.js";
 import { hashPassword } from "../../utils/password.js";
 import { ConflictError, ValidationError, NotFoundError, ForbiddenError } from "../../utils/appError.js";
 import { recordAudit } from "../audit/audit.service.js";
+import { notify } from "../notifications/notifications.service.js";
 import { toSkipTake, paginate, type PaginationInput } from "../../utils/pagination.js";
 import type {
   CreateUserInput,
@@ -43,6 +44,22 @@ export const usersService = {
       entityId: user.id,
       after: { email: user.email, roles: input.roleIds },
     });
+
+    // Notify all ADMINs about the new user registration (including the actor
+    // so they see a confirmation of their administrative action)
+    const admins = await prisma.user.findMany({
+      where: { status: "ACTIVE", archivedAt: null, roles: { some: { role: { name: "ADMIN" } } } },
+      select: { id: true },
+    });
+    for (const admin of admins) {
+      await notify({
+        userId: admin.id,
+        type: "user_registered",
+        title: `New user registered: ${user.fullName}`,
+        body: `A new account has been created for ${user.email} with role(s): ${roles.map((r) => r.name).join(", ")}.`,
+        data: { userId: user.id, email: user.email },
+      });
+    }
 
     return {
       user,
@@ -111,6 +128,38 @@ export const usersService = {
       before: { status: before.status },
       after: { status },
     });
+
+    // Notify the affected user about their account status change
+    const statusLabels: Record<string, string> = {
+      ACTIVE: "activated",
+      INACTIVE: "deactivated",
+      SUSPENDED: "suspended",
+    };
+    await notify({
+      userId: id,
+      type: "user_status_changed",
+      title: `Your account has been ${statusLabels[status] ?? status.toLowerCase()}`,
+      body: status === "ACTIVE"
+        ? "Your account is now active. You can log in to the system."
+        : `Your account has been ${statusLabels[status] ?? status.toLowerCase()}. Contact the court office if you have questions.`,
+      data: { userId: id, status },
+    });
+
+    // Notify all ADMINs about the status change (including the actor)
+    const admins = await prisma.user.findMany({
+      where: { status: "ACTIVE", archivedAt: null, roles: { some: { role: { name: "ADMIN" } } } },
+      select: { id: true },
+    });
+    for (const admin of admins) {
+      await notify({
+        userId: admin.id,
+        type: "user_status_changed",
+        title: `User ${user.fullName} ${statusLabels[status] ?? status.toLowerCase()}`,
+        body: `Account ${user.email} has been ${statusLabels[status] ?? status.toLowerCase()} by an administrator.`,
+        data: { userId: id, status },
+      });
+    }
+
     return user;
   },
 
@@ -137,6 +186,17 @@ export const usersService = {
       entityId: id,
       after: { roleIds },
     });
+
+    // Notify the user that their roles have been changed
+    const roleNames = roles.map((r) => r.name).join(", ");
+    await notify({
+      userId: id,
+      type: "user_roles_changed",
+      title: "Your roles have been updated",
+      body: `Your roles have been changed to: ${roleNames}. You may need to log out and back in for the changes to take effect.`,
+      data: { userId: id, roleIds },
+    });
+
     return usersService.getById(id);
   },
 
@@ -166,6 +226,15 @@ export const usersService = {
       action: "user.password_reset_by_admin",
       entityType: "user",
       entityId: id,
+    });
+
+    // Notify the user that their password was reset by an admin
+    await notify({
+      userId: id,
+      type: "user_password_reset",
+      title: "Your password has been reset",
+      body: "An administrator has reset your password. Please log in with your new password. All previous sessions have been revoked.",
+      data: { userId: id },
     });
   },
 

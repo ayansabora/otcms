@@ -4,7 +4,12 @@ import { paginationSchema } from "../../utils/pagination.js";
 import { UnauthorizedError, ValidationError } from "../../utils/appError.js";
 import { z } from "zod";
 
-const listQuerySchema = paginationSchema.extend({ unreadOnly: z.coerce.boolean().default(false) });
+const listQuerySchema = paginationSchema.extend({
+  unreadOnly: z.string().optional().transform((v) => {
+    if (v === undefined || v === "") return false;
+    return v !== "false" && v !== "0";
+  }),
+});
 
 function userId(req: Request): string {
   if (!req.user) throw new UnauthorizedError();
