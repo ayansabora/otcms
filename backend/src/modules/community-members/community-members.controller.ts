@@ -20,6 +20,13 @@ function requireParamId(req: Request): string {
 }
 
 export const communityMembersController = {
+  /** Returns the CommunityMember record linked to the authenticated user (if any). */
+  async me(req: Request, res: Response) {
+    const userId = actorId(req);
+    const member = await communityMembersService.getByUserId(userId);
+    res.status(200).json({ member });
+  },
+
   async register(req: Request, res: Response) {
     const input = registerMemberSchema.parse(req.body);
     const member = await communityMembersService.register(input, actorId(req));

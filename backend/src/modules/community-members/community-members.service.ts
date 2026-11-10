@@ -65,6 +65,15 @@ export const communityMembersService = {
     return member;
   },
 
+  /**
+   * Returns the CommunityMember linked to a User account, or null if none.
+   * Used by the /me endpoint so a logged-in community member can retrieve
+   * their own profile without knowing their CM id.
+   */
+  async getByUserId(userId: string): Promise<Awaited<ReturnType<typeof communityMembersRepository.findById>>> {
+    return communityMembersRepository.findByUserId(userId);
+  },
+
   async setVerification(id: string, input: VerifyMemberInput, actorUserId: string) {
     const member = await communityMembersService.getById(id);
     if (member.verificationStatus !== "PENDING") {
