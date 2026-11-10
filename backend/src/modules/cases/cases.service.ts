@@ -35,6 +35,13 @@ const DEFAULT_MIN_WITNESSES: Record<string, number> = {
 
 export const casesService = {
   async create(input: CreateCaseInput, caller: CallerContext) {
+    // A caller with case:view_own but not case:create is a community member.
+    // They may only submit self-service requests (isRequest: true), not
+    // formal case registrations — those are the Record Officer's job.
+    if (!caller.permissions.includes("case:create") && input.isRequest !== true) {
+      throw new ForbiddenError("Community members may only submit case requests, not formal registrations.");
+    }
+
     // BR-CR-002: Formal registrations must name at least one COMPLAINANT and one RESPONDENT.
     // Self-service requests (isRequest: true) may have empty parties — the Record Officer
     // links them during the formal registration step.

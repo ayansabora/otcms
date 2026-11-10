@@ -9,7 +9,9 @@ casesRouter.use(authenticate);
 const VIEW_PERMISSIONS = ["case:view_all", "case:view_assigned", "case:view_own"];
 
 casesRouter.get("/", requirePermission(...VIEW_PERMISSIONS), casesController.list);
-casesRouter.post("/", requirePermission("case:create"), casesController.create);
+// Community members (case:view_own) may also create cases, but only as
+// self-service requests (isRequest: true). The service layer enforces this.
+casesRouter.post("/", requirePermission("case:create", "case:view_own"), casesController.create);
 casesRouter.get("/:id", requirePermission(...VIEW_PERMISSIONS), casesController.get);
 casesRouter.get("/:id/history", requirePermission(...VIEW_PERMISSIONS), casesController.history);
 
