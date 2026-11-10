@@ -22,6 +22,10 @@ export const communityMembersApi = {
   list: (params: { page?: number; pageSize?: number; search?: string; verificationStatus?: string } = {}) =>
     api.get<PaginatedResult<CommunityMember>>("/community-members", params),
 
+  /** Returns the CommunityMember profile linked to the currently authenticated user, or null. */
+  me: () =>
+    api.get<{ member: CommunityMember | null }>("/community-members/me"),
+
   get: (id: string) =>
     api.get<{ member: CommunityMember }>(`/community-members/${id}`),
 
