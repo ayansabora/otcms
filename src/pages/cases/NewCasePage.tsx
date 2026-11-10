@@ -216,8 +216,8 @@ export function NewCasePage() {
   // ── Members query — only fires once auth is confirmed ────────────────
   const { data: membersData, isLoading, isError, refetch } = useQuery({
     queryKey: ["community-members", { search: "" }],
-    queryFn:  () => communityMembersApi.list({ pageSize: 500 }),
-    enabled:  !!user,   // wait for the user session to be established
+    queryFn:  () => communityMembersApi.list({ pageSize: 100 }),  // backend enforces max 100
+    enabled:  !!user,
     staleTime: 5_000,
     retry: 2,
   });
