@@ -119,6 +119,49 @@ export const casesRepository = {
     return prisma.caseWitness.count({ where: { caseId } });
   },
 
+  /**
+   * Creates multiple witnesses and links them to the given case inside a
+   * single transaction. If any witness row fails, the whole batch rolls back
+   * so the case is never left in a partially-witnessed state.
+   */
+  async createWitnessesForCase(
+    caseId: string,
+    witnesses: {
+      fullName: string;
+      sex?: string;
+      age?: number;
+      phone?: string;
+      communityMemberId?: string;
+      relationshipToCase?: string;
+      testimonySummary?: string;
+    }[],
+  ) {
+    return prisma.$transaction(async (tx) => {
+      for (const w of witnesses) {
+        const witnessData: Prisma.WitnessCreateInput = { fullName: w.fullName };
+        if (w.sex               !== undefined) (witnessData as Record<string, unknown>).sex = w.sex;
+        if (w.age               !== undefined) (witnessData as Record<string, unknown>).age = w.age;
+        if (w.phone             !== undefined) witnessData.phone             = w.phone;
+        if (w.communityMemberId !== undefined) witnessData.communityMemberId = w.communityMemberId;
+
+        const witness = await tx.witness.create({ data: witnessData });
+
+        const linkData: Prisma.CaseWitnessCreateInput = {
+          case:    { connect: { id: caseId } },
+          witness: { connect: { id: witness.id } },
+        };
+        if (w.relationshipToCase !== undefined) (linkData as Record<string, unknown>).relationshipToCase = w.relationshipToCase;
+        if (w.testimonySummary   !== undefined) {
+          linkData.testimonySummary = w.testimonySummary;
+          linkData.testifiedAt      = new Date();
+        }
+        if (w.communityMemberId  !== undefined) linkData.communityMember = { connect: { id: w.communityMemberId } };
+
+        await tx.caseWitness.create({ data: linkData });
+      }
+    });
+  },
+
   findOpenCaseByParties(complainantId: string, respondentId: string, caseType: string) {
     return prisma.case.findFirst({
       where: {

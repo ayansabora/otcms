@@ -29,7 +29,27 @@ export const createCaseSchema = z.object({
   location:              z.string().max(255).optional(),
   priority:              z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL"),
   jurisdictionBasis:     z.string().max(500).optional(),
-  parties:               z.array(casePartySchema).default([]),
+  // Registration notes (optional free-text from tab 5 of the registration form)
+  registrationNotes:     z.string().max(2000).optional(),
+  // For formal case registration (isRequest: false), at least one COMPLAINANT and one RESPONDENT are required.
+  // For community-member self-service requests (isRequest: true), parties may be empty — the Record Officer
+  // links them during formal registration.
+  parties: z.array(casePartySchema).default([]).superRefine((parties, ctx) => {
+    // We can't access the sibling `isRequest` field directly in superRefine at this level,
+    // so we do this check in the service layer for formal registrations.
+    // Here we just ensure the array itself is well-formed.
+    const roles = parties.map((p) => p.roleInCase);
+    const ids   = parties.map((p) => p.communityMemberId);
+    if (new Set(ids).size !== ids.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Duplicate party entries are not allowed." });
+    }
+    for (const p of parties) {
+      if (roles.filter((r) => r === p.roleInCase).length > 1 &&
+          parties.filter((x) => x.communityMemberId === p.communityMemberId).length > 1) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Community member ${p.communityMemberId} appears more than once.` });
+      }
+    }
+  }),
   witnesses:             z.array(witnessInputSchema).optional(),
   minWitnessesRequired:  z.number().int().min(0).max(20).optional(),
   // Community Member self-service request flag
@@ -71,6 +91,10 @@ export const listCasesQuerySchema = paginationSchema.extend({
   caseType:  caseTypeEnum.optional(),
   dateFrom:  z.coerce.date().optional(),
   dateTo:    z.coerce.date().optional(),
-  isRequest: z.coerce.boolean().optional(),
+  isRequest: z.string().optional().transform((v) => {
+    if (v === undefined || v === "") return undefined;
+    // Query params arrive as strings: "true" / "false" / "1" / "0"
+    return v !== "false" && v !== "0";
+  }),
 });
 export type ListCasesQuery = z.infer<typeof listCasesQuerySchema>;

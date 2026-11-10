@@ -35,6 +35,16 @@ const DEFAULT_MIN_WITNESSES: Record<string, number> = {
 
 export const casesService = {
   async create(input: CreateCaseInput, caller: CallerContext) {
+    // BR-CR-002: Formal registrations must name at least one COMPLAINANT and one RESPONDENT.
+    // Self-service requests (isRequest: true) may have empty parties — the Record Officer
+    // links them during the formal registration step.
+    if (!input.isRequest) {
+      const hasComplainant = input.parties.some((p) => p.roleInCase === "COMPLAINANT");
+      const hasRespondent  = input.parties.some((p) => p.roleInCase === "RESPONDENT");
+      if (!hasComplainant) throw new ValidationError("At least one COMPLAINANT is required for a formal case registration.");
+      if (!hasRespondent)  throw new ValidationError("At least one RESPONDENT is required for a formal case registration.");
+    }
+
     // Every party must be a registered — and, per §11 rule 1, verified —
     // For community member requests, skip party verification (parties are empty)
     for (const party of input.parties) {
@@ -65,7 +75,8 @@ export const casesService = {
       }
     }
 
-    // If an opposing party was supplied with the request, append it to the description
+    // Build the description — append opposing-party block if provided, then
+    // append registration notes if provided (they become the permanent record).
     let description = input.description;
     if (input.opposingParty && (input.opposingParty.fullName || input.opposingParty.phone)) {
       const op = input.opposingParty;
@@ -78,7 +89,12 @@ export const casesService = {
       ].filter(Boolean).join("\n");
       description = `${description}\n\n${lines}`;
     }
+    if (input.registrationNotes?.trim()) {
+      description = `${description}\n\n--- Registration Notes ---\n${input.registrationNotes.trim()}`;
+    }
 
+    // Create the case + initial history entry atomically, then add witnesses
+    // in a transaction so a mid-loop failure rolls back all witness rows too.
     const createdCase = await casesRepository.create({
       caseNumber,
       caseType:   input.caseType,
@@ -93,11 +109,20 @@ export const casesService = {
       parties: input.parties,
     });
 
-    // Bulk-create any witnesses provided at registration time
+    // Witnesses are added in a single transaction so a failure rolls back cleanly.
     if (input.witnesses && input.witnesses.length > 0) {
-      for (const w of input.witnesses) {
-        await casesService.addWitness(createdCase.id, w, caller);
-      }
+      await casesRepository.createWitnessesForCase(
+        createdCase.id,
+        input.witnesses.map((w) => ({
+          fullName:            w.fullName,
+          ...(w.sex               !== undefined ? { sex:               w.sex }               : {}),
+          ...(w.age               !== undefined ? { age:               w.age }               : {}),
+          ...(w.phone             !== undefined ? { phone:             w.phone }             : {}),
+          ...(w.communityMemberId !== undefined ? { communityMemberId: w.communityMemberId } : {}),
+          ...(w.relationshipToCase !== undefined ? { relationshipToCase: w.relationshipToCase } : {}),
+          ...(w.testimonySummary  !== undefined ? { testimonySummary:  w.testimonySummary }  : {}),
+        })),
+      );
     }
 
     await recordAudit({
