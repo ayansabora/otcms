@@ -134,6 +134,8 @@ export interface HearingParticipant {
   witnessId?: string | null;
   role: string;
   attended?: boolean | null;
+  user?: { id: string; fullName: string; email: string } | null;
+  communityMember?: { id: string; fullName: string } | null;
 }
 
 // ── Decisions ─────────────────────────────────────────────────────────────────

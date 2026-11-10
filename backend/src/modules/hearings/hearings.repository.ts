@@ -2,7 +2,15 @@ import { prisma } from "../../database/prismaClient.js";
 import type { Prisma } from "@prisma/client";
 
 const hearingWithRelations = {
-  include: { participants: true, case: { select: { id: true, caseNumber: true, status: true } } },
+  include: {
+    participants: {
+      include: {
+        user:            { select: { id: true, fullName: true, email: true } },
+        communityMember: { select: { id: true, fullName: true } },
+      },
+    },
+    case: { select: { id: true, caseNumber: true, status: true, caseType: true } },
+  },
 } satisfies Prisma.HearingDefaultArgs;
 
 export const hearingsRepository = {

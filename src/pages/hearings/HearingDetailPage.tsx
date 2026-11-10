@@ -215,22 +215,27 @@ export function HearingDetailPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {hearing.participants.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between py-2 border-b border-[var(--color-line)] last:border-0"
-                >
-                  <div className="text-sm text-[var(--color-ink)]">
-                    {p.userId
-                      ? <span className="text-[var(--color-muted)]">User ID: {p.userId.slice(0, 8)}…</span>
-                      : p.communityMemberId
-                        ? <span className="text-[var(--color-muted)]">Member ID: {p.communityMemberId.slice(0, 8)}…</span>
-                        : <span className="text-[var(--color-muted)]">Witness ID: {p.witnessId?.slice(0, 8)}…</span>
-                    }
+              {hearing.participants.map((p) => {
+                const name =
+                  p.user?.fullName ??
+                  p.communityMember?.fullName ??
+                  (p.witnessId ? `Witness (${p.witnessId.slice(0, 8)}…)` : "Unknown");
+                const sub  =
+                  p.user?.email ??
+                  (p.communityMemberId ? "Community member" : null);
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between py-2 border-b border-[var(--color-line)] last:border-0"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-[var(--color-ink)]">{name}</p>
+                      {sub && <p className="text-xs text-[var(--color-muted)]">{sub}</p>}
+                    </div>
+                    <Badge variant="default" size="sm">{p.role}</Badge>
                   </div>
-                  <Badge variant="default" size="sm">{p.role}</Badge>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardBody>

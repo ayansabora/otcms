@@ -167,6 +167,7 @@ model CommunityMember {
   user           User?          @relation(fields: [userId], references: [id])
   caseParties    CaseParty[]
   caseWitnesses  CaseWitness[]
+  hearingParticipants HearingParticipant[]
   summonsReceived Summons[]     @relation("SummonsRespondent")
   consentRecords  ConsentRecord[] @relation("ConsentMember")
 
@@ -391,6 +392,7 @@ model HearingParticipant {
 
   hearing Hearing @relation(fields: [hearingId], references: [id], onDelete: Cascade)
   user    User?   @relation(fields: [userId], references: [id])
+  communityMember CommunityMember? @relation(fields: [communityMemberId], references: [id])
 
   @@map("hearing_participants")
 }
