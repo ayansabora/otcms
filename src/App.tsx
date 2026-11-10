@@ -24,6 +24,7 @@ import { NewMemberPage } from "./pages/members/NewMemberPage";
 // Hearings
 import { HearingsListPage } from "./pages/hearings/HearingsListPage";
 import { ScheduleHearingPage } from "./pages/hearings/ScheduleHearingPage";
+import { HearingDetailPage } from "./pages/hearings/HearingDetailPage";
 
 // Decisions
 import { DecisionsListPage } from "./pages/decisions/DecisionsListPage";
@@ -112,6 +113,7 @@ function App() {
               {/* Hearings */}
               <Route path="hearings" element={<HearingsListPage />} />
               <Route path="hearings/schedule" element={<ScheduleHearingPage />} />
+              <Route path="hearings/:id" element={<HearingDetailPage />} />
 
               {/* Decisions */}
               <Route path="decisions" element={<DecisionsListPage />} />
