@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, type FormEvent } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Scale, MapPin, FileText, Users, UserPlus, Trash2,
@@ -187,6 +187,8 @@ export function NewCasePage() {
   const navigate    = useNavigate();
   const queryClient = useQueryClient();
   const { user }    = useAuth();
+  const [searchParams] = useSearchParams();
+  const fromRequestId  = searchParams.get("fromRequest") ?? undefined;
   const [activeTab, setActiveTab] = useState("case");
 
   // ── Tab 1: Case Info ───────────────────────────────────────────────────
@@ -197,6 +199,24 @@ export function NewCasePage() {
   const [description,       setDescription]       = useState("");
   const [jurisdictionBasis, setJurisdictionBasis] = useState("");
 
+  // ── Pre-fill from a community member request ──────────────────────────
+  const { data: requestData } = useQuery({
+    queryKey: ["case", fromRequestId],
+    queryFn: () => casesApi.get(fromRequestId!),
+    enabled: !!fromRequestId,
+    staleTime: Infinity,
+  });
+
+  useEffect(() => {
+    if (!requestData?.case) return;
+    const req = requestData.case;
+    setCaseType(req.caseType);
+    if (req.location) setLocation(req.location);
+    // Strip the appended opposing-party block before setting description
+    const rawDesc = req.description ?? "";
+    const sepIdx  = rawDesc.indexOf("--- Opposing Party ---");
+    setDescription(sepIdx !== -1 ? rawDesc.slice(0, sepIdx).trim() : rawDesc);
+  }, [requestData]);
   // ── Tab 2 & 3: Parties ────────────────────────────────────────────────
   const [complainants, setComplainants] = useState<string[]>([""]);
   const [respondents,  setRespondents]  = useState<string[]>([""]);
@@ -334,6 +354,13 @@ export function NewCasePage() {
 
       {error            && <AlertMessage variant="danger"  message={error}            className="mb-4" />}
       {duplicateWarning && <AlertMessage variant="warning" message={duplicateWarning} className="mb-4" />}
+      {fromRequestId && requestData?.case && (
+        <AlertMessage
+          variant="info"
+          message={`Pre-filled from community member request ${requestData.case.caseNumber}. Review and complete the plaintiff/defendant tabs before submitting.`}
+          className="mb-4"
+        />
+      )}
 
       <form onSubmit={handleSubmit} noValidate>
         <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} className="mb-5" />

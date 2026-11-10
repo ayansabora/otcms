@@ -50,17 +50,15 @@ export function SubmitCaseRequestPage() {
   const [error,      setError]      = useState<string | null>(null);
   const [submitted,  setSubmitted]  = useState<{ caseNumber: string; caseId: string } | null>(null);
 
-  // Auto-load the CM's profile from the community_members table
-  // via userId lookup — the /community-members endpoint uses findByUserId internally
-  const { data: membersData } = useQuery({
-    queryKey: ["community-members", "my-profile", user?.id],
-    queryFn: () => communityMembersApi.list({ pageSize: 5 }),
+  // Load the CM's profile linked to this user account via the /me endpoint
+  const { data: myProfileData } = useQuery({
+    queryKey: ["community-members", "me"],
+    queryFn: () => communityMembersApi.me(),
     enabled: !!user,
     staleTime: 60_000,
   });
 
-  // Find the member record linked to the logged-in user
-  const myProfile = membersData?.items.find(() => true) ?? null; // best-effort — first result
+  const myProfile = myProfileData?.member ?? null;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

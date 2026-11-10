@@ -131,14 +131,21 @@ export function CaseRequestsPage() {
 
   const [search,    setSearch]    = useState("");
   const [page,      setPage]      = useState(1);
+  const [pendingOnly, setPendingOnly] = useState(true);
   const [noteModal, setNoteModal] = useState<{ req: Case; action: "return" | "reject" } | null>(null);
   const [note,      setNote]      = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
   const [acceptConfirm, setAcceptConfirm] = useState<Case | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["case-requests", { page, search }],
-    queryFn: () => casesApi.list({ page, pageSize: 20, isRequest: true, search: search || undefined }),
+    queryKey: ["case-requests", { page, search, pendingOnly }],
+    queryFn: () => casesApi.list({
+      page,
+      pageSize: 20,
+      isRequest: true,
+      search: search || undefined,
+      status: pendingOnly ? "SUBMITTED" : undefined,
+    }),
   });
 
   /* ── Mutations ─────────────────────────────────────────────────────── */
@@ -213,7 +220,7 @@ export function CaseRequestsPage() {
         </CardBody>
       </Card>
 
-      {/* Search */}
+      {/* Search + filter */}
       <div className="flex gap-3 mb-5">
         <div className="relative flex-1 min-w-48">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-faint)]" />
@@ -224,6 +231,16 @@ export function CaseRequestsPage() {
             className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] pl-9 pr-4 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 placeholder:text-[var(--color-faint)]"
           />
         </div>
+        <button
+          onClick={() => { setPendingOnly((v) => !v); setPage(1); }}
+          className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+            pendingOnly
+              ? "bg-[var(--color-warning-bg)] border-[var(--color-warning)]/40 text-[var(--color-warning-dark)]"
+              : "bg-[var(--color-surface)] border-[var(--color-line)] text-[var(--color-muted)]"
+          }`}
+        >
+          {pendingOnly ? "Pending only" : "All requests"}
+        </button>
       </div>
 
       {/* Table */}
