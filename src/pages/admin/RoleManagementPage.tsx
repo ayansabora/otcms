@@ -50,6 +50,18 @@ const PERMISSION_GROUPS: { label: string; codes: string[] }[] = [
     label: "Documents",
     codes: ["document:upload", "document:read"],
   },
+  {
+    label: "Summons",
+    codes: ["summons:manage", "summons:read"],
+  },
+  {
+    label: "Consent Records",
+    codes: ["consent:manage", "consent:read"],
+  },
+  {
+    label: "Appeals",
+    codes: ["appeal:manage", "appeal:read"],
+  },
 ];
 
 const ALL_CODES = PERMISSION_GROUPS.flatMap((g) => g.codes);
@@ -74,6 +86,12 @@ const PERMISSION_DESC: Record<string, string> = {
   "decision:approve":   "Approve/finalize a decision",
   "document:upload":    "Upload a document",
   "document:read":      "Download/view an authorized document",
+  "summons:manage":     "Issue and record service of summons",
+  "summons:read":       "View summons records",
+  "consent:manage":     "Record and withdraw party consent",
+  "consent:read":       "View consent records",
+  "appeal:manage":      "File and manage appeals",
+  "appeal:read":        "View appeal records",
 };
 
 // System roles cannot have their permissions changed or be deleted

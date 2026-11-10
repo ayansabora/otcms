@@ -17,7 +17,10 @@ export function MyCasesPage() {
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["my-cases", page],
-    queryFn: () => casesApi.list({ page, pageSize: 15 }),
+    // The backend scopes results to cases the caller is a party to (case:view_own permission).
+    // We additionally exclude community-member self-service requests (isRequest: true)
+    // since those are informal pre-registration submissions, not formal court cases yet.
+    queryFn: () => casesApi.list({ page, pageSize: 15, isRequest: false }),
   });
 
   return (

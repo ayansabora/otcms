@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { casesApi } from "../../api/cases";
@@ -14,11 +14,14 @@ import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { PageHeader } from "../../components/PageHeader";
 import { Card, CardHeader, CardBody } from "../../components/Card";
+import { Select } from "../../components/Input";
 import { Tabs, TabPanel } from "../../components/Tabs";
 import { PageLoading } from "../../components/LoadingSpinner";
-import { ErrorMessage } from "../../components/ErrorMessage";
+import { ErrorMessage, AlertMessage } from "../../components/ErrorMessage";
 import { EmptyState } from "../../components/EmptyState";
+import { Modal } from "../../components/Modal";
 import { useAuth } from "../../auth/AuthContext";
+import { useToast } from "../../components/Toast";
 import type { CaseStatus } from "../../types/api";
 
 // Mirrors backend workflow — frontend only shows available transitions
@@ -40,8 +43,15 @@ export function CaseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   const [error, setError] = useState<string | null>(null);
+
+  // Document upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadCategory, setUploadCategory] = useState("evidence");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["case", id],
@@ -100,6 +110,21 @@ export function CaseDetailPage() {
     },
     onError: (err) => {
       setError(err instanceof ApiError ? err.message : "Could not update case status.");
+    },
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => documentsApi.upload(id!, file, uploadCategory),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents", "by-case", id] });
+      toast.success("Document uploaded successfully.");
+      setShowUploadModal(false);
+      setUploadError(null);
+      setUploadCategory("evidence");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    },
+    onError: (err) => {
+      setUploadError(err instanceof ApiError ? err.message : "Upload failed. Please try again.");
     },
   });
 
@@ -354,12 +379,25 @@ export function CaseDetailPage() {
             title="Documents"
             action={
               user?.permissions.includes("document:upload") ? (
-                <Button disabled>+ Upload (Coming Soon)</Button>
+                <Button leftIcon={<span>+</span>} onClick={() => { setUploadError(null); setShowUploadModal(true); }}>
+                  Upload Document
+                </Button>
               ) : undefined
             }
           />
           {!documentsData?.documents.length ? (
-            <EmptyState icon="📄" title="No documents" description="Documents will appear here once uploaded." />
+            <EmptyState
+              icon="📄"
+              title="No documents"
+              description="Upload plaintiff documents, defendant documents, witness statements, and evidence files using the Upload button."
+              action={
+                user?.permissions.includes("document:upload") ? (
+                  <Button size="sm" onClick={() => { setUploadError(null); setShowUploadModal(true); }}>
+                    Upload First Document
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
             <div className="divide-y divide-[var(--color-line)]">
               {documentsData.documents.map((doc) => (
@@ -367,10 +405,27 @@ export function CaseDetailPage() {
                   <div>
                     <p className="font-medium text-sm">{doc.filename}</p>
                     <p className="text-xs text-[var(--color-muted)] mt-0.5">
-                      {(doc.sizeBytes / 1024).toFixed(1)} KB • {new Date(doc.createdAt).toLocaleDateString()}
+                      {doc.category && <span className="mr-2 capitalize">{doc.category}</span>}
+                      {(doc.sizeBytes / 1024).toFixed(1)} KB · {new Date(doc.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <Button variant="secondary" className="text-xs px-3 py-1.5">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const blob = await documentsApi.download(doc.id);
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url; a.download = doc.filename;
+                        document.body.appendChild(a); a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      } catch {
+                        toast.error("Download failed.");
+                      }
+                    }}
+                  >
                     Download
                   </Button>
                 </div>
@@ -378,6 +433,59 @@ export function CaseDetailPage() {
             </div>
           )}
         </Card>
+
+        {/* Upload modal */}
+        <Modal
+          isOpen={showUploadModal}
+          onClose={() => { setShowUploadModal(false); setUploadError(null); }}
+          title="Upload Document"
+          size="sm"
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setShowUploadModal(false)}>Cancel</Button>
+              <Button
+                loading={uploadMutation.isPending}
+                onClick={() => {
+                  const file = fileInputRef.current?.files?.[0];
+                  if (!file) { setUploadError("Please select a file."); return; }
+                  uploadMutation.mutate(file);
+                }}
+              >
+                Upload
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <Select
+              label="Document Category"
+              value={uploadCategory}
+              onChange={(e) => setUploadCategory(e.target.value)}
+            >
+              <option value="evidence">Evidence</option>
+              <option value="plaintiff_document">Plaintiff Document</option>
+              <option value="defendant_document">Defendant Document</option>
+              <option value="witness_statement">Witness Statement</option>
+              <option value="court_order">Court Order</option>
+              <option value="other">Other</option>
+            </Select>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wide mb-1.5">
+                File <span className="text-[var(--color-danger)]">*</span>
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
+                className="block w-full text-sm text-[var(--color-muted)] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-[var(--color-primary-subtle)] file:text-[var(--color-primary)] hover:file:bg-[var(--color-primary)]/20 cursor-pointer"
+              />
+              <p className="text-xs text-[var(--color-muted)] mt-1">
+                Accepted: PDF, Word, JPG, PNG, TXT. Max 15 MB.
+              </p>
+            </div>
+            {uploadError && <AlertMessage variant="danger" message={uploadError} />}
+          </div>
+        </Modal>
       </TabPanel>
 
       {/* Decision */}

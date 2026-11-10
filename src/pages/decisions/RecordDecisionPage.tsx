@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { decisionsApi } from "../../api/decisions";
 import { ApiError } from "../../api/client";
 import { Button } from "../../components/Button";
-import { Input, TextArea } from "../../components/Input";
+import { Input, Select, TextArea } from "../../components/Input";
 import { PageHeader } from "../../components/PageHeader";
 import { Card, CardBody } from "../../components/Card";
 import { AlertMessage } from "../../components/ErrorMessage";
@@ -18,6 +18,7 @@ export function RecordDecisionPage() {
   const [remarks, setRemarks] = useState("");
   const [decisionDate, setDecisionDate] = useState(new Date().toISOString().slice(0, 10));
   const [requiredApprovals, setRequiredApprovals] = useState(2);
+  const [decisionType, setDecisionType] = useState<"RECONCILIATION" | "RULING">("RULING");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -29,6 +30,7 @@ export function RecordDecisionPage() {
     try {
       const result = await decisionsApi.record({
         caseId,
+        decisionType,
         outcome,
         description,
         remarks: remarks || undefined,
@@ -66,6 +68,16 @@ export function RecordDecisionPage() {
               required
               placeholder="e.g. Land returned to complainant, Reconciliation agreed"
             />
+            <Select
+              label="Decision Type"
+              value={decisionType}
+              onChange={(e) => setDecisionType(e.target.value as "RECONCILIATION" | "RULING")}
+              required
+              hint="Reconciliation = mutually agreed resolution; Ruling = elder panel judgment"
+            >
+              <option value="RULING">Ruling (Elder Panel Judgment)</option>
+              <option value="RECONCILIATION">Reconciliation (Mutual Agreement)</option>
+            </Select>
             <TextArea
               label="Decision Details"
               value={description}

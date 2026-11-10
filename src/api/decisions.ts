@@ -3,6 +3,7 @@ import type { Decision } from "../types/api";
 
 export interface RecordDecisionInput {
   caseId: string;
+  decisionType?: "RECONCILIATION" | "RULING";
   outcome: string;
   description: string;
   remarks?: string;
