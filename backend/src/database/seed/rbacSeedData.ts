@@ -31,10 +31,10 @@ export const PERMISSIONS = [
 
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
   ADMIN: [
-    "user:manage", "role:manage", "audit:read",
+    "user:manage", "role:manage", "audit:read", "report:generate",
     "member:register", "member:view",
     "case:view_all", "case:assign",
-    "document:upload", "document:read", "report:generate",
+    "document:upload", "document:read",
     "summons:read", "consent:read", "appeal:read",
   ],
   COURT_MANAGER: [
