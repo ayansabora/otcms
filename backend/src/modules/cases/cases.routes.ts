@@ -9,6 +9,8 @@ casesRouter.use(authenticate);
 const VIEW_PERMISSIONS = ["case:view_all", "case:view_assigned", "case:view_own"];
 
 casesRouter.get("/", requirePermission(...VIEW_PERMISSIONS), casesController.list);
+// Admin/officer repair endpoint — must be before /:id routes
+casesRouter.post("/repair-status", requirePermission("case:view_all", "case:transition"), casesController.repairStatus);
 // Community members (case:view_own) may also create cases, but only as
 // self-service requests (isRequest: true). The service layer enforces this.
 casesRouter.post("/", requirePermission("case:create", "case:view_own"), casesController.create);

@@ -60,4 +60,16 @@ export const casesController = {
     const result = await casesService.list(query, callerContext(req));
     res.status(200).json(result);
   },
+
+  /**
+   * POST /cases/repair-status
+   * Admin-only endpoint that finds cases with a COMPLETED hearing but a
+   * status that hasn't advanced to DECISION_PENDING, and fixes them.
+   * This handles cases that existed before the auto-transition code.
+   */
+  async repairStatus(req: Request, res: Response) {
+    const caller = callerContext(req);
+    const repaired = await casesService.repairCaseStatuses(caller);
+    res.status(200).json({ repaired, message: `${repaired.length} case(s) advanced to DECISION_PENDING.` });
+  },
 };

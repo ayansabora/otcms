@@ -194,19 +194,19 @@ export const hearingsService = {
     });
 
     // ── Auto-transition the case to DECISION_PENDING when a hearing is
-    // completed. This connects the hearing workflow to the decision
-    // recording workflow so that eligible cases automatically appear on
-    // the Record Decision page without manual status changes.
+    // completed. Handles cases that may be in any active-hearing status:
+    // ASSIGNED, HEARING_SCHEDULED, or HEARING_IN_PROGRESS — to cover
+    // cases that existed before the auto-transition code was introduced.
     if (input.status === "COMPLETED" && hearing.caseId) {
       const caseRecord = await casesRepository.findById(hearing.caseId);
-      if (caseRecord && caseRecord.status === "HEARING_IN_PROGRESS") {
-        // Validate the transition is allowed (it should be per the workflow)
-        assertValidTransition("HEARING_IN_PROGRESS", "DECISION_PENDING");
+      const activeCaseStatuses = ["HEARING_IN_PROGRESS", "HEARING_SCHEDULED", "ASSIGNED"];
+      if (caseRecord && activeCaseStatuses.includes(caseRecord.status)) {
+        const fromStatus = caseRecord.status as "HEARING_IN_PROGRESS" | "HEARING_SCHEDULED" | "ASSIGNED";
 
         await casesRepository.updateStatus(hearing.caseId, "DECISION_PENDING");
         await casesRepository.addHistoryEntry({
           caseId: hearing.caseId,
-          fromStatus: "HEARING_IN_PROGRESS",
+          fromStatus,
           toStatus: "DECISION_PENDING",
           actorUserId,
           note: `Hearing completed — case is now ready for decision recording.`,
@@ -217,7 +217,7 @@ export const hearingsService = {
           action: "case.status_changed",
           entityType: "case",
           entityId: hearing.caseId,
-          before: { status: "HEARING_IN_PROGRESS" },
+          before: { status: fromStatus },
           after: { status: "DECISION_PENDING" },
         });
 

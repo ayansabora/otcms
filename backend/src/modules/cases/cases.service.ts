@@ -436,4 +436,51 @@ export const casesService = {
     const { items, total } = await casesRepository.list(params);
     return paginate(items, total, pagination);
   },
+
+  /**
+   * Finds cases that have at least one COMPLETED hearing but whose status
+   * hasn't advanced past the hearing stage. Advances each to DECISION_PENDING.
+   * Designed to fix cases created before the auto-transition code existed.
+   * Requires case:view_all or case:transition permission.
+   */
+  async repairCaseStatuses(caller: CallerContext) {
+    if (!caller.permissions.includes("case:view_all") &&
+        !caller.permissions.includes("case:transition")) {
+      throw new ForbiddenError("Requires case:view_all or case:transition permission");
+    }
+
+    // Find all non-terminal cases that have a completed hearing
+    const stuck = await prisma.case.findMany({
+      where: {
+        archivedAt: null,
+        status: { in: ["ASSIGNED", "HEARING_SCHEDULED", "HEARING_IN_PROGRESS"] },
+        hearings: { some: { status: "COMPLETED" } },
+      },
+      select: { id: true, caseNumber: true, status: true },
+    });
+
+    const repaired: string[] = [];
+
+    for (const c of stuck) {
+      await casesRepository.updateStatus(c.id, "DECISION_PENDING");
+      await casesRepository.addHistoryEntry({
+        caseId: c.id,
+        fromStatus: c.status as CaseStatus,
+        toStatus: "DECISION_PENDING",
+        actorUserId: caller.userId,
+        note: "Status repaired: hearing was completed but case status was not advanced automatically.",
+      });
+      await recordAudit({
+        actorUserId: caller.userId,
+        action: "case.status_repaired",
+        entityType: "case",
+        entityId: c.id,
+        before: { status: c.status },
+        after: { status: "DECISION_PENDING" },
+      });
+      repaired.push(c.caseNumber);
+    }
+
+    return repaired;
+  },
 };
