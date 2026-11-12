@@ -39,6 +39,13 @@ export const communityMembersRepository = {
     return prisma.communityMember.findUnique({ where: { userId } });
   },
 
+  linkUserId(memberId: string, userId: string) {
+    return prisma.communityMember.update({
+      where: { id: memberId },
+      data: { userId },
+    });
+  },
+
   update(id: string, data: Partial<CreateMemberData>) {
     const d: Prisma.CommunityMemberUpdateInput = {};
     if (data.fullName        !== undefined) d.fullName        = data.fullName;

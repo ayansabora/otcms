@@ -94,6 +94,28 @@ export const communityMembersService = {
     return communityMembersRepository.findByUserId(userId);
   },
 
+  /**
+   * Links a CommunityMember record to a User account.
+   * Admin-only. Used to associate an existing member record with a login account.
+   */
+  async linkUserAccount(memberId: string, userId: string, actorUserId: string) {
+    // Verify no other member already has this userId
+    const existing = await communityMembersRepository.findByUserId(userId);
+    if (existing && existing.id !== memberId) {
+      throw new ConflictError(`User account is already linked to community member ${existing.fullName}`);
+    }
+    const member = await communityMembersService.getById(memberId);
+    const updated = await communityMembersRepository.linkUserId(memberId, userId);
+    await recordAudit({
+      actorUserId,
+      action: "member.user_linked",
+      entityType: "community_member",
+      entityId: memberId,
+      after: { userId, fullName: member.fullName },
+    });
+    return updated;
+  },
+
   async setVerification(id: string, input: VerifyMemberInput, actorUserId: string) {
     const member = await communityMembersService.getById(id);
     if (member.verificationStatus !== "PENDING") {

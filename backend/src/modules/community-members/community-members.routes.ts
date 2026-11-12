@@ -9,6 +9,7 @@ communityMembersRouter.use(authenticate);
 communityMembersRouter.get(   "/",                   requirePermission("member:view"),     communityMembersController.list);
 communityMembersRouter.get(   "/me",                             communityMembersController.me);  // own profile — no extra permission
 communityMembersRouter.post(  "/",                   requirePermission("member:register"), communityMembersController.register);
+communityMembersRouter.patch( "/:id/link-user",      requirePermission("user:manage"),     communityMembersController.linkUser);
 communityMembersRouter.get(   "/:id",                requirePermission("member:view"),     communityMembersController.get);
 communityMembersRouter.patch( "/:id",                requirePermission("member:register"), communityMembersController.update);
 communityMembersRouter.patch( "/:id/verification",   requirePermission("member:verify"),   communityMembersController.verify);

@@ -27,6 +27,17 @@ export const communityMembersController = {
     res.status(200).json({ member });
   },
 
+  /** Admin: link an existing CommunityMember record to a User account. */
+  async linkUser(req: Request, res: Response) {
+    const memberId = requireParamId(req);
+    const userId   = req.body.userId;
+    if (!userId || typeof userId !== "string") {
+      throw new ValidationError("userId is required in request body");
+    }
+    const member = await communityMembersService.linkUserAccount(memberId, userId, actorId(req));
+    res.status(200).json({ member });
+  },
+
   async register(req: Request, res: Response) {
     const input = registerMemberSchema.parse(req.body);
     const member = await communityMembersService.register(input, actorId(req));
