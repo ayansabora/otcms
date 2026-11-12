@@ -194,14 +194,21 @@ export const hearingsService = {
     });
 
     // ── Auto-transition the case to DECISION_PENDING when a hearing is
-    // completed. Handles cases that may be in any active-hearing status:
-    // ASSIGNED, HEARING_SCHEDULED, or HEARING_IN_PROGRESS — to cover
-    // cases that existed before the auto-transition code was introduced.
+    // completed. Handles cases that may be in any active or pre-hearing status:
+    // UNDER_REVIEW, VERIFIED, ASSIGNED, HEARING_SCHEDULED, HEARING_IN_PROGRESS
+    // — to cover cases where a hearing was started without following the
+    // prescribed workflow order, or cases that existed before this code.
     if (input.status === "COMPLETED" && hearing.caseId) {
       const caseRecord = await casesRepository.findById(hearing.caseId);
-      const activeCaseStatuses = ["HEARING_IN_PROGRESS", "HEARING_SCHEDULED", "ASSIGNED"];
-      if (caseRecord && activeCaseStatuses.includes(caseRecord.status)) {
-        const fromStatus = caseRecord.status as "HEARING_IN_PROGRESS" | "HEARING_SCHEDULED" | "ASSIGNED";
+      const activeCaseStatuses = [
+        "UNDER_REVIEW",
+        "VERIFIED",
+        "ASSIGNED",
+        "HEARING_SCHEDULED",
+        "HEARING_IN_PROGRESS",
+      ] as const;
+      if (caseRecord && (activeCaseStatuses as readonly string[]).includes(caseRecord.status)) {
+        const fromStatus = caseRecord.status as (typeof activeCaseStatuses)[number];
 
         await casesRepository.updateStatus(hearing.caseId, "DECISION_PENDING");
         await casesRepository.addHistoryEntry({

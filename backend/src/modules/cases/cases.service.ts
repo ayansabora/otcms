@@ -453,7 +453,15 @@ export const casesService = {
     const stuck = await prisma.case.findMany({
       where: {
         archivedAt: null,
-        status: { in: ["ASSIGNED", "HEARING_SCHEDULED", "HEARING_IN_PROGRESS"] },
+        status: {
+          in: [
+            "UNDER_REVIEW",
+            "VERIFIED",
+            "ASSIGNED",
+            "HEARING_SCHEDULED",
+            "HEARING_IN_PROGRESS",
+          ],
+        },
         hearings: { some: { status: "COMPLETED" } },
       },
       select: { id: true, caseNumber: true, status: true },
