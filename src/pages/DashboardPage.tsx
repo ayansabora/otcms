@@ -2,12 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   Scale, Calendar, Clock, CheckCircle,
-  ArrowRight, ChevronRight, FileText, Bell, TrendingUp,
+  ArrowRight, ChevronRight, FileText, Bell, TrendingUp, UserCheck,
 } from "lucide-react";
 import { casesApi } from "../api/cases";
 import { reportsApi } from "../api/reports";
 import { hearingsApi } from "../api/hearings";
 import { notificationsApi } from "../api/notifications";
+import { communityMembersApi } from "../api/communityMembers";
 import { useAuth } from "../auth/AuthContext";
 import { StatusBadge, PriorityBadge } from "../components/StatusBadge";
 import { Card, CardHeader, CardBody } from "../components/Card";
@@ -98,9 +99,23 @@ export function DashboardPage() {
   );
 
   const { data: recentCases, isLoading: casesLoading } = useQuery({
-    queryKey: ["cases", "dashboard-recent"],
-    queryFn: () => casesApi.list({ page: 1, pageSize: 7 }),
+    queryKey: ["cases", "dashboard-recent", isCommunityMember],
+    queryFn: () => casesApi.list({
+      page: 1,
+      pageSize: 7,
+      // CMs only see formal cases (not requests) — same filter as MyCasesPage
+      ...(isCommunityMember ? { isRequest: false } : {}),
+    }),
   });
+
+  // CM profile to show role in each case
+  const { data: myProfileData } = useQuery({
+    queryKey: ["community-members", "me"],
+    queryFn: () => communityMembersApi.me(),
+    enabled: !!user && isCommunityMember,
+    staleTime: 120_000,
+  });
+  const myMemberId = myProfileData?.member?.id;
 
   const { data: statusReport, isLoading: statsLoading } = useQuery({
     queryKey: ["reports", "cases-by-status"],
@@ -195,7 +210,7 @@ export function DashboardPage() {
         <Card>
           <CardHeader title="My Cases" icon={<Scale />} action={<Link to="/app/my-cases"><Button variant="ghost" size="sm" rightIcon={<ArrowRight size={14} />}>View all</Button></Link>} />
           {casesLoading ? (
-            <SkeletonTable rows={4} cols={3} />
+            <SkeletonTable rows={4} cols={4} />
           ) : !recentCases?.items.length ? (
             <EmptyState icon={<Scale />} title="No cases yet" description="You are not listed as a party in any case. Submit a case request to get started." action={<Link to="/app/case-request"><Button size="sm">Submit Case Request</Button></Link>} />
           ) : (
@@ -205,19 +220,36 @@ export function DashboardPage() {
                   <tr className="text-left text-[10px] text-[var(--color-muted)] uppercase tracking-wide bg-[var(--color-bg)] border-b border-[var(--color-line)]">
                     <th className="px-5 py-3 font-semibold">Case No.</th>
                     <th className="px-5 py-3 font-semibold">Type</th>
+                    <th className="px-5 py-3 font-semibold">My Role</th>
                     <th className="px-5 py-3 font-semibold">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {recentCases.items.slice(0, 5).map((c) => (
-                    <tr key={c.id} className="border-t border-[var(--color-line)] hover:bg-[var(--color-bg)]">
-                      <td className="px-5 py-3.5">
-                        <Link to={`/app/cases/${c.id}`} className="font-semibold text-[var(--color-primary)] hover:underline">{c.caseNumber}</Link>
-                      </td>
-                      <td className="px-5 py-3.5 text-[var(--color-muted)] text-xs capitalize">{c.caseType.replace(/_/g, " ").toLowerCase()}</td>
-                      <td className="px-5 py-3.5"><StatusBadge status={c.status} /></td>
-                    </tr>
-                  ))}
+                  {recentCases.items.slice(0, 5).map((c) => {
+                    const myParty = myMemberId
+                      ? c.parties?.find((p) => p.communityMemberId === myMemberId)
+                      : null;
+                    return (
+                      <tr key={c.id} className="border-t border-[var(--color-line)] hover:bg-[var(--color-bg)]">
+                        <td className="px-5 py-3.5">
+                          <Link to={`/app/cases/${c.id}`} className="font-semibold text-[var(--color-primary)] hover:underline">{c.caseNumber}</Link>
+                          {c.title && <p className="text-[11px] text-[var(--color-muted)] truncate max-w-32">{c.title}</p>}
+                        </td>
+                        <td className="px-5 py-3.5 text-[var(--color-muted)] text-xs capitalize">{c.caseType.replace(/_/g, " ").toLowerCase()}</td>
+                        <td className="px-5 py-3.5 text-xs">
+                          {myParty ? (
+                            <span className={`flex items-center gap-1 ${myParty.roleInCase === "COMPLAINANT" ? "text-[var(--color-info)]" : "text-[var(--color-warning)]"}`}>
+                              <UserCheck size={12} />
+                              {myParty.roleInCase === "COMPLAINANT" ? "Plaintiff" : "Defendant"}
+                            </span>
+                          ) : (
+                            <span className="text-[var(--color-faint)]">Party</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5"><StatusBadge status={c.status} /></td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
