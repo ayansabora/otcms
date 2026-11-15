@@ -30,6 +30,7 @@ import { HearingDetailPage } from "./pages/hearings/HearingDetailPage";
 import { DecisionsListPage } from "./pages/decisions/DecisionsListPage";
 import { DecisionDetailPage } from "./pages/decisions/DecisionDetailPage";
 import { RecordDecisionPage } from "./pages/decisions/RecordDecisionPage";
+import { DecisionDocumentPage } from "./pages/decisions/DecisionDocumentPage";
 
 // Documents
 import { DocumentsListPage } from "./pages/documents/DocumentsListPage";
@@ -120,6 +121,7 @@ function App() {
               <Route path="decisions" element={<DecisionsListPage />} />
               <Route path="decisions/record" element={<RecordDecisionPage />} />
               <Route path="decisions/:id" element={<DecisionDetailPage />} />
+              <Route path="decisions/:id/document" element={<DecisionDocumentPage />} />
 
               {/* Documents */}
               <Route path="documents" element={<DocumentsListPage />} />

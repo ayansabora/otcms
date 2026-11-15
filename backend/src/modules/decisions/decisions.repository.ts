@@ -2,7 +2,36 @@ import { prisma } from "../../database/prismaClient.js";
 import type { Prisma } from "@prisma/client";
 
 const decisionWithRelations = {
-  include: { approvals: { include: { user: { select: { id: true, fullName: true } } } }, case: { select: { id: true, caseNumber: true, status: true } } },
+  include: {
+    approvals: {
+      include: { user: { select: { id: true, fullName: true } } },
+    },
+    case: {
+      select: {
+        id: true,
+        caseNumber: true,
+        caseType: true,
+        status: true,
+        title: true,
+        description: true,
+        location: true,
+        createdAt: true,
+        parties: {
+          include: {
+            communityMember: {
+              select: { id: true, fullName: true, phone: true, address: true, kebele: true, woreda: true },
+            },
+          },
+        },
+        assignments: {
+          include: {
+            user: { select: { id: true, fullName: true, email: true } },
+          },
+        },
+        hearings: true,
+      },
+    },
+  },
 } satisfies Prisma.DecisionDefaultArgs;
 
 export const decisionsRepository = {

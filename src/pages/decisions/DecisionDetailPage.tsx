@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Printer, FileText } from "lucide-react";
 import { decisionsApi } from "../../api/decisions";
 import { ApiError } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
@@ -15,6 +16,7 @@ import { Modal } from "../../components/Modal";
 export function DecisionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [approveModal, setApproveModal] = useState(false);
   const [approveVote, setApproveVote] = useState<boolean>(true);
@@ -57,9 +59,29 @@ export function DecisionDetailPage() {
           { label: "Decision" },
         ]}
         actions={
-          canApprove && !alreadyVoted && dec.approvalStatus === "PENDING" ? (
-            <Button onClick={() => setApproveModal(true)}>Submit Approval</Button>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            {canApprove && !alreadyVoted && dec.approvalStatus === "PENDING" ? (
+              <Button onClick={() => setApproveModal(true)}>Submit Approval</Button>
+            ) : null}
+            {dec.approvalStatus === "APPROVED" && (
+              <>
+                <Button
+                  variant="secondary"
+                  leftIcon={<FileText size={15} />}
+                  onClick={() => navigate(`/app/decisions/${id}/document`)}
+                >
+                  Preview Document
+                </Button>
+                <Button
+                  variant="secondary"
+                  leftIcon={<Printer size={15} />}
+                  onClick={() => navigate(`/app/decisions/${id}/document`)}
+                >
+                  Print / PDF
+                </Button>
+              </>
+            )}
+          </div>
         }
       />
 

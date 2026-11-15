@@ -162,3 +162,26 @@ h1, h2, h3, h4, .font-display { font-family: var(--font-display); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-slide-down { animation: slideDown 0.15s ease forwards; }
+
+/* ─── Decision Document — Print styles ───────────────────────────────────── */
+@media print {
+  /* Hide everything except the decision document */
+  body * { visibility: hidden; }
+  .decision-document, .decision-document * { visibility: visible; }
+  .decision-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm;     /* A4 width */
+    min-height: 297mm; /* A4 height */
+    padding: 15mm 20mm;
+    margin: 0;
+    background: white;
+    box-shadow: none;
+    border: none;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+}

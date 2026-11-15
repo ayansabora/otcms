@@ -154,6 +154,20 @@ export interface DecisionApproval {
   user?: { id: string; fullName: string };
 }
 
+export interface DecisionCaseInfo {
+  id: string;
+  caseNumber: string;
+  caseType: CaseType;
+  status: CaseStatus;
+  title?: string | null;
+  description?: string | null;
+  location?: string | null;
+  createdAt?: string;
+  parties?: CaseParty[];
+  assignments?: CaseAssignment[];
+  hearings?: { id: string; startTime: string; endTime: string; location: string; status: string; purpose?: string | null }[];
+}
+
 export interface Decision {
   id: string;
   caseId: string;
@@ -168,7 +182,7 @@ export interface Decision {
   createdAt: string;
   updatedAt: string;
   approvals?: DecisionApproval[];
-  case?: { id: string; caseNumber: string };
+  case?: DecisionCaseInfo;
 }
 
 // ── Documents ─────────────────────────────────────────────────────────────────
