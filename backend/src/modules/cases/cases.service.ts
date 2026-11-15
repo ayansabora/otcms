@@ -455,6 +455,7 @@ export const casesService = {
         archivedAt: null,
         status: {
           in: [
+            "SUBMITTED",
             "UNDER_REVIEW",
             "VERIFIED",
             "ASSIGNED",

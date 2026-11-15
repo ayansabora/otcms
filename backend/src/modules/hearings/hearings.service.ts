@@ -201,6 +201,7 @@ export const hearingsService = {
     if (input.status === "COMPLETED" && hearing.caseId) {
       const caseRecord = await casesRepository.findById(hearing.caseId);
       const activeCaseStatuses = [
+        "SUBMITTED",
         "UNDER_REVIEW",
         "VERIFIED",
         "ASSIGNED",
