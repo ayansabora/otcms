@@ -18,6 +18,15 @@ export interface MemberInput {
 // Keep old alias so existing call-sites don't break
 export type RegisterMemberInput = MemberInput;
 
+export interface CmStats {
+  totalRequests: number;
+  pendingRequests: number;
+  registeredCases: number;
+  activeCases: number;
+  completedCases: number;
+  witnessCases: number;
+}
+
 export const communityMembersApi = {
   list: (params: { page?: number; pageSize?: number; search?: string; verificationStatus?: string } = {}) =>
     api.get<PaginatedResult<CommunityMember>>("/community-members", params),
@@ -25,6 +34,14 @@ export const communityMembersApi = {
   /** Returns the CommunityMember profile linked to the currently authenticated user, or null. */
   me: () =>
     api.get<{ member: CommunityMember | null }>("/community-members/me"),
+
+  /** Returns live dashboard stat counts for the authenticated community member. */
+  myStats: () =>
+    api.get<CmStats>("/community-members/me/stats"),
+
+  /** Updates the authenticated CM's own profile fields. */
+  updateMyProfile: (input: Partial<MemberInput>) =>
+    api.patch<{ member: CommunityMember }>("/community-members/me", input),
 
   get: (id: string) =>
     api.get<{ member: CommunityMember }>(`/community-members/${id}`),

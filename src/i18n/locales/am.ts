@@ -78,6 +78,7 @@ export default {
     witnesses: "ምስክሮች",
     myCases: "የእኔ ጉዳዮች",
     submitCaseRequest: "የጉዳይ ጥያቄ አስገባ",
+    myInvolvement: "ተሳትፎዬ",
     hearings: "ችሎቶች",
     scheduleHearing: "ችሎት ቀጠሮ ያዝ",
     viewHearings: "ችሎቶችን ተመልከት",

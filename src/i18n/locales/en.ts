@@ -69,6 +69,7 @@ export default {
     witnesses: "Witnesses",
     myCases: "My Cases",
     submitCaseRequest: "Submit Case Request",
+    myInvolvement: "My Involvement",
     hearings: "Hearings",
     scheduleHearing: "Schedule Hearing",
     viewHearings: "View Hearings",

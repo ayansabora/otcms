@@ -117,6 +117,14 @@ export function DashboardPage() {
   });
   const myMemberId = myProfileData?.member?.id;
 
+  // CM live dashboard stats
+  const { data: cmStats } = useQuery({
+    queryKey: ["cm-stats"],
+    queryFn: () => communityMembersApi.myStats(),
+    enabled: !!user && isCommunityMember,
+    staleTime: 60_000,
+  });
+
   const { data: statusReport, isLoading: statsLoading } = useQuery({
     queryKey: ["reports", "cases-by-status"],
     queryFn: () => reportsApi.casesByStatus(),
@@ -174,6 +182,18 @@ export function DashboardPage() {
             <p className="text-white/50 text-sm mt-1">Oromo Traditional Court — Bale Robe City</p>
           </div>
         </div>
+
+        {/* Stat cards — real counts from the database */}
+        {cmStats && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <StatCard label="Total Requests"    value={cmStats.totalRequests}    icon={<FileText size={18} />} to="/app/my-cases" />
+            <StatCard label="Pending Requests"  value={cmStats.pendingRequests}  icon={<Clock size={18} />}    to="/app/my-cases" accentColor="var(--color-warning)" />
+            <StatCard label="Registered Cases"  value={cmStats.registeredCases}   icon={<Scale size={18} />}    to="/app/my-cases" />
+            <StatCard label="Active Cases"      value={cmStats.activeCases}       icon={<Calendar size={18} />}  to="/app/my-cases" accentColor="var(--color-info)" />
+            <StatCard label="Completed Cases"   value={cmStats.completedCases}   icon={<CheckCircle size={18} />} to="/app/my-cases" accentColor="var(--color-success)" />
+            <StatCard label="Unread"            value={unreadCount}              icon={<Bell size={18} />}      to="/app/notifications" accentColor="var(--color-danger)" />
+          </div>
+        )}
 
         {/* Quick actions */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

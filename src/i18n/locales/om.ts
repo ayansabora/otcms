@@ -83,6 +83,7 @@ export default {
     witnesses: "Ragaawwan",
     myCases: "Himatawwan Koo",
     submitCaseRequest: "Gaaffii Himata Ergii",
+    myInvolvement: "Hirmaannaa Koo",
     hearings: "Dhaddachawwan",
     scheduleHearing: "Dhaddacha Qophaa'i",
     viewHearings: "Dhaddachawwan Ilaalee",

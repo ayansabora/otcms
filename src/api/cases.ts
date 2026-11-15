@@ -30,6 +30,9 @@ export interface CreateCaseInput {
 export const casesApi = {
   list: (params: { page?: number; pageSize?: number; status?: CaseStatus; caseType?: CaseType; search?: string; isRequest?: boolean; dateFrom?: string; dateTo?: string } = {}) =>
     api.get<PaginatedResult<Case>>("/cases", params),
+  /** Returns cases where the authenticated CM is a registered witness. */
+  myWitnessCases: (params: { page?: number; pageSize?: number; status?: CaseStatus; search?: string } = {}) =>
+    api.get<PaginatedResult<Case>>("/cases/my-witness", params),
   get: (id: string) => api.get<{ case: Case }>(`/cases/${id}`),
   create: (input: CreateCaseInput) =>
     api.post<{ case: Case; duplicateWarning?: string }>("/cases", input),

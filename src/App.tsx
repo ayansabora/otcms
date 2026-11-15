@@ -60,6 +60,7 @@ import { PermissionsPage } from "./pages/admin/PermissionsPage";
 
 // Community Member pages
 import { MyCasesPage } from "./pages/my-cases/MyCasesPage";
+import { MyInvolvementPage } from "./pages/my-cases/MyInvolvementPage";
 import { SubmitCaseRequestPage } from "./pages/case-request/SubmitCaseRequestPage";
 
 // Record Officer management sub-pages
@@ -150,6 +151,7 @@ function App() {
 
               {/* Community Member pages */}
               <Route path="my-cases" element={<MyCasesPage />} />
+              <Route path="my-involvement" element={<MyInvolvementPage />} />
               <Route path="case-request" element={<SubmitCaseRequestPage />} />
 
               {/* Record Officer party management */}
