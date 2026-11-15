@@ -134,6 +134,26 @@ export const communityMembersService = {
     return updated;
   },
 
+  /**
+   * Returns live stat counts for a community member's own dashboard.
+   * All numbers come directly from the database — no fake/hardcoded values.
+   */
+  async getMyCmStats(userId: string) {
+    const member = await communityMembersRepository.findByUserId(userId);
+    if (!member) {
+      return { totalRequests: 0, pendingRequests: 0, registeredCases: 0, activeCases: 0, completedCases: 0, witnessCases: 0 };
+    }
+    const [totalRequests, pendingRequests, registeredCases, activeCases, completedCases, witnessCases] = await Promise.all([
+      prisma.case.count({ where: { archivedAt: null, isRequest: true, submittedByUserId: userId } }),
+      prisma.case.count({ where: { archivedAt: null, isRequest: true, submittedByUserId: userId, status: "SUBMITTED" } }),
+      prisma.case.count({ where: { archivedAt: null, isRequest: false, parties: { some: { communityMemberId: member.id } } } }),
+      prisma.case.count({ where: { archivedAt: null, isRequest: false, parties: { some: { communityMemberId: member.id } }, status: { in: ["ASSIGNED","HEARING_SCHEDULED","HEARING_IN_PROGRESS","DECISION_PENDING"] } } }),
+      prisma.case.count({ where: { archivedAt: null, isRequest: false, parties: { some: { communityMemberId: member.id } }, status: { in: ["DECIDED","CLOSED"] } } }),
+      prisma.case.count({ where: { archivedAt: null, witnesses: { some: { communityMemberId: member.id } } } }),
+    ]);
+    return { totalRequests, pendingRequests, registeredCases, activeCases, completedCases, witnessCases };
+  },
+
   async list(query: ListMembersQuery) {
     const pagination: PaginationInput = { page: query.page, pageSize: query.pageSize };
     const { skip, take } = toSkipTake(pagination);

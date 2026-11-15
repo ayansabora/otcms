@@ -27,6 +27,26 @@ export const communityMembersController = {
     res.status(200).json({ member });
   },
 
+  /** GET /community-members/me/stats — dashboard stat cards for the authenticated CM */
+  async myStats(req: Request, res: Response) {
+    const userId = actorId(req);
+    const stats = await communityMembersService.getMyCmStats(userId);
+    res.status(200).json(stats);
+  },
+
+  /** PATCH /community-members/me — authenticated CM updates their own profile fields */
+  async updateMyProfile(req: Request, res: Response) {
+    const userId = actorId(req);
+    const member = await communityMembersService.getByUserId(userId);
+    if (!member) {
+      res.status(404).json({ error: { code: "NOT_FOUND", message: "No community member profile linked to this account" } });
+      return;
+    }
+    const input = updateMemberSchema.parse(req.body);
+    const updated = await communityMembersService.update(member.id, input, userId);
+    res.status(200).json({ member: updated });
+  },
+
   /** Admin: link an existing CommunityMember record to a User account. */
   async linkUser(req: Request, res: Response) {
     const memberId = requireParamId(req);

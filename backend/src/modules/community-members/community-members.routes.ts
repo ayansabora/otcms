@@ -8,6 +8,8 @@ communityMembersRouter.use(authenticate);
 
 communityMembersRouter.get(   "/",                   requirePermission("member:view"),     communityMembersController.list);
 communityMembersRouter.get(   "/me",                             communityMembersController.me);  // own profile — no extra permission
+communityMembersRouter.get(   "/me/stats",                       communityMembersController.myStats);  // own stats — no extra permission
+communityMembersRouter.patch( "/me",                             communityMembersController.updateMyProfile);  // own profile update
 communityMembersRouter.post(  "/",                   requirePermission("member:register"), communityMembersController.register);
 communityMembersRouter.patch( "/:id/link-user",      requirePermission("user:manage"),     communityMembersController.linkUser);
 communityMembersRouter.get(   "/:id",                requirePermission("member:view"),     communityMembersController.get);

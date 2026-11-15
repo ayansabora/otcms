@@ -403,6 +403,7 @@ export const casesService = {
     if (query.dateFrom) params.dateFrom = query.dateFrom;
     if (query.dateTo) params.dateTo = query.dateTo;
     if (query.isRequest !== undefined) params.isRequest = query.isRequest;
+    if (query.witnessedByMemberId) params.witnessedByMemberId = query.witnessedByMemberId;
 
     // Visibility scoping applied server-side based on the caller's actual
     // permissions — never client-supplied.
@@ -432,6 +433,29 @@ export const casesService = {
         throw new ForbiddenError("You do not have permission to list cases");
       }
     }
+
+    const { items, total } = await casesRepository.list(params);
+    return paginate(items, total, pagination);
+  },
+
+  /**
+   * Returns cases where the authenticated community member is a registered witness.
+   * Scoped entirely to the caller's own memberId — no cross-member access.
+   */
+  async listWitnessCases(query: ListCasesQuery, caller: CallerContext) {
+    const member = await communityMembersRepository.findByUserId(caller.userId);
+    if (!member) return paginate([], 0, { page: query.page, pageSize: query.pageSize });
+
+    const pagination: PaginationInput = { page: query.page, pageSize: query.pageSize };
+    const { skip, take } = toSkipTake(pagination);
+    const params: Parameters<typeof casesRepository.list>[0] = {
+      skip,
+      take,
+      witnessedByMemberId: member.id,
+    };
+    if (query.status) params.status = query.status;
+    if (query.search) params.search = query.search;
+    if (query.isRequest !== undefined) params.isRequest = query.isRequest;
 
     const { items, total } = await casesRepository.list(params);
     return paginate(items, total, pagination);

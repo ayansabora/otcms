@@ -61,6 +61,13 @@ export const casesController = {
     res.status(200).json(result);
   },
 
+  /** GET /cases/my-witness — cases where the authenticated CM is a witness */
+  async listWitnessCases(req: Request, res: Response) {
+    const query = listCasesQuerySchema.parse(req.query);
+    const result = await casesService.listWitnessCases(query, callerContext(req));
+    res.status(200).json(result);
+  },
+
   /**
    * POST /cases/repair-status
    * Admin-only endpoint that finds cases with a COMPLETED hearing but a

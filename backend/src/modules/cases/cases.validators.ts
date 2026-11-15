@@ -96,5 +96,7 @@ export const listCasesQuerySchema = paginationSchema.extend({
     // Query params arrive as strings: "true" / "false" / "1" / "0"
     return v !== "false" && v !== "0";
   }),
+  // Filter to cases where this community member is a registered witness
+  witnessedByMemberId: z.string().uuid().optional(),
 });
 export type ListCasesQuery = z.infer<typeof listCasesQuerySchema>;
